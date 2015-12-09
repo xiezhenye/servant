@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<config>
+    <server>
+        <listen>:2465</listen>
+        <!--<authDelay>30</authDelay>-->
+    </server>
+    <commands id="db1">
+        <command id="foo">
+            echo "hello world"
+        </command>
+        <command id="grep" lang="exec">
+            grep $s
+        </command>
+        <command id="sleep" timeout="5">
+            sleep 1000
+        </command>
+    </commands>
+    <files id="db1">
+        <dir id="binlog1">
+            <root>/data/mysql0</root>
+            <allow>get</allow>
+            <allow>delete</allow><!-- put, post -->
+            <pattern>log-bin\.\d+</pattern>
+        </dir>
+    </files>
+    <user id="db_ha">
+        <key>s4xuF@P0qj28fwL</key>
+        <host>10.200.180.2</host>
+        <files id="db1" />
+        <commands id="db1" />
+    </user>
+    <log>
+        <path>/data/logs/servant/servant.log</path>
+    </log>
+</config>
