@@ -3,7 +3,6 @@ package server
 import (
 	"servant/conf"
 	"net/http"
-	//"sync/atomic"
 	"sync/atomic"
 )
 
@@ -25,20 +24,24 @@ func NewServer(config *conf.Config) *Server {
 
 func (self *Server) newSession() *Session {
 	sess := Session{
-		id: atomic.AddUint64(&self.nextSessionId, 1),
+		id: atomic.AddUint64(&(self.nextSessionId), 1),
 		Server: self,
 	}
 	return &sess
 }
 
 func (self *Server) newFileServer() http.HandlerFunc {
-	sess := self.newSession()
-	return sess.serveFile
+	return func(resp http.ResponseWriter, req *http.Request) {
+		sess := self.newSession()
+		sess.serveFile(resp, req)
+	}
 }
 
 func (self *Server) newCommandServer() http.HandlerFunc {
-	sess := self.newSession()
-	return sess.serveCommand
+	return func(resp http.ResponseWriter, req *http.Request) {
+		sess := self.newSession()
+		sess.serveCommand(resp, req)
+	}
 }
 
 func (self *Server) Run() {
