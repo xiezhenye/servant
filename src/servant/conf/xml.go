@@ -66,33 +66,9 @@ func XConfigFromData(data []byte) (*XConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	//trimAll(&ret)
 	return &ret, nil
 }
-/*
-func trimAll(conf *XConfig) {
-	for i := range(conf.Files) {
-		for j := range(conf.Files[i].Dirs) {
-			conf.Files[i].Dirs[j].Root = strings.TrimSpace(conf.Files[i].Dirs[j].Root)
-			conf.Files[i].Dirs[j].Pattern = strings.TrimSpace(conf.Files[i].Dirs[j].Pattern)
-			for k := range(conf.Files[i].Dirs[j].Allow) {
-				conf.Files[i].Dirs[j].Allow[k] = strings.ToLower(strings.TrimSpace(conf.Files[i].Dirs[j].Allow[k]))
-			}
-		}
-	}
-	for i := range(conf.Commands) {
-		for j := range(conf.Commands[i].Commands) {
-			conf.Commands[i].Commands[j].Code = strings.TrimSpace(conf.Commands[i].Commands[j].Code)
-		}
-	}
-	for i := range(conf.Users) {
-		conf.Users[i].Key = strings.TrimSpace(conf.Users[i].Key)
-		for j := range(conf.Users[i].Hosts) {
-			conf.Users[i].Hosts[j] = strings.TrimSpace(conf.Users[i].Hosts[j])
-		}
-	}
-}
-*/
+
 func XConfigFromReader(reader io.Reader) (*XConfig, error) {
 	data, err := ioutil.ReadAll(reader)
 	if err != nil {
@@ -126,8 +102,8 @@ func (conf *XConfig) ToConfig() *Config {
 			ret.Files[fname].Dirs[dname].Pattern = strings.TrimSpace(ret.Files[fname].Dirs[dname].Pattern)
 			ret.Files[fname].Dirs[dname].Allow = make([]string, 0, 4)
 			for k := range(conf.Files[i].Dirs[j].Allow) {
-				act := strings.TrimSpace(conf.Files[i].Dirs[j].Allow[k])
-				ret.Files[fname].Dirs[dname].Allow = append(ret.Files[fname].Dirs[dname].Allow, act)
+				method := strings.ToUpper(strings.TrimSpace(conf.Files[i].Dirs[j].Allow[k]))
+				ret.Files[fname].Dirs[dname].Allow = append(ret.Files[fname].Dirs[dname].Allow, method)
 			}
 		}
 	}

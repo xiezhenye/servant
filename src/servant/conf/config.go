@@ -5,10 +5,16 @@ type Config struct {
 	Users    map[string]*User
 	Commands map[string]*Commands
 	Files    map[string]*Files
+	Auth     Auth
 }
 
 type Server struct {
 	Listen string
+}
+
+type Auth struct {
+	Enabled       bool
+	MaxTimeDelta  uint32
 }
 
 type User struct {

@@ -54,6 +54,13 @@ func (self *Session) serveCommand() {
 	urlPath := self.req.URL.Path
 	method := self.req.Method
 	self.info("command", "+ %s %s %s", self.req.RemoteAddr, method, urlPath)
+	err := self.auth()
+	if err != nil {
+		self.warn("command", "- auth failed: %s", err.Error())
+		self.resp.WriteHeader(http.StatusForbidden)
+		return
+	}
+
 	if method != "GET" && method != "POST" {
 		self.warn("command", "- not allow method: %s", method)
 		self.resp.WriteHeader(http.StatusMethodNotAllowed)

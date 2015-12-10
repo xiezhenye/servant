@@ -9,6 +9,7 @@ import (
 	"strings"
 	"os"
 	"io"
+	"fmt"
 )
 
 var fileUrlRe, _ = regexp.Compile(`^/files/(\w+)/(\w+)(/.+)$`)
@@ -31,7 +32,12 @@ func (self *Session) findDirConfigByPath(path string) (*conf.Dir, string) {
 }
 
 func (self *Session) checkDirAllow(dirConf *conf.Dir, method string) error {
-	return nil
+	for _, allowed := range(dirConf.Allow) {
+		if allowed == method {
+			return nil
+		}
+	}
+	return fmt.Errorf("method %s not allowed", method)
 }
 
 func (self *Session) serveFile() {
@@ -39,6 +45,13 @@ func (self *Session) serveFile() {
 	method := self.req.Method
 	urlPath := self.req.URL.Path
 	self.info("file", "+ %s %s %s", self.req.RemoteAddr, method, urlPath)
+	err := self.auth()
+	if err != nil {
+		self.warn("file", "- auth failed: %s", err.Error())
+		self.resp.WriteHeader(http.StatusForbidden)
+		return
+	}
+
 	dirConf, relPath := self.findDirConfigByPath(urlPath)
 	if dirConf == nil {
 		self.warn("file", "- dir of %s not found", urlPath)
@@ -58,7 +71,6 @@ func (self *Session) serveFile() {
 	}
 	var file *os.File
 	defer file.Close()
-	var err error
 	switch method {
 	case "GET":
 		file, err = os.Open(filePath)
