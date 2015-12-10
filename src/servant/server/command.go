@@ -5,7 +5,6 @@ import (
 	"os/exec"
 	"servant/conf"
 	"io/ioutil"
-	//"fmt"
 	"time"
 	"math"
 	"fmt"
@@ -52,13 +51,17 @@ func getCmdExec(code string, query map[string][]string) *exec.Cmd {
 
 func (self *Session) serveCommand() {
 	defer self.req.Body.Close()
+	urlPath := self.req.URL.Path
 	method := self.req.Method
+	self.info("command", "+ %s %s %s", self.req.RemoteAddr, method, urlPath)
 	if method != "GET" && method != "POST" {
+		self.warn("command", "- not allow method: %s", method)
 		self.resp.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	cmdConf := self.findCommandConfigByPath(self.req.URL.Path)
+	cmdConf := self.findCommandConfigByPath(urlPath)
 	if cmdConf == nil {
+		self.warn("command", "- command %s not found", urlPath)
 		self.resp.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -69,6 +72,7 @@ func (self *Session) serveCommand() {
 	case "bash", "":
 		cmd = getCmdBash(cmdConf.Code, self.req.URL.Query())
 	default:
+		self.warn("command", "- unknown language")
 		self.resp.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -81,6 +85,7 @@ func (self *Session) serveCommand() {
 	out, err := cmd.StdoutPipe()
 	defer out.Close()
 	if err != nil {
+		self.warn("command", "- %s", err.Error())
 		self.resp.Header().Set("X-SERVANT-ERR", err.Error())
 		self.resp.WriteHeader(http.StatusInternalServerError)
 		return
@@ -112,16 +117,23 @@ func (self *Session) serveCommand() {
 	select {
 	case err = <-ch:
 		if err != nil {
+			self.warn("command", "- execution error: %s", err.Error())
 			self.resp.Header().Set("X-SERVANT-ERR", err.Error())
 			self.resp.WriteHeader(http.StatusBadGateway)
 			return
 		}
 	case <-time.After(timeout * time.Second):
 		cmd.Process.Kill()
-		err = fmt.Errorf("command execution timeout")
+		err = fmt.Errorf("command execution timeout: %d", timeout)
+		self.warn("command", "- %s", err.Error())
 		self.resp.Header().Set("X-SERVANT-ERR", err.Error())
 		self.resp.WriteHeader(http.StatusGatewayTimeout)
 		return
 	}
-	_, _ = self.resp.Write(outBuf) // may log errors
+	_, err = self.resp.Write(outBuf) // may log errors
+	if err != nil {
+		self.warn("command", "- io error: %s", err.Error())
+	} else {
+		self.info("command", "- execution done")
+	}
 }
