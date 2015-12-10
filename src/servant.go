@@ -12,7 +12,7 @@ func main() {
 	flag.Parse()
 	xconf, err := conf.XConfigFromFile(*confPath)
 	if err != nil {
-		fmt.Printf("read config error: %s", err)
+		fmt.Printf("read config error: %s\n", err)
 		return
 	}
 	server.NewServer(xconf.ToConfig()).Run()
