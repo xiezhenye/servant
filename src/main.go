@@ -4,10 +4,13 @@ import (
 	"servant/conf"
 	"servant/server"
 	"fmt"
+	"flag"
 )
 
 func main() {
-	xconf, err := conf.XConfigFromFile("conf/example.xml")
+	confPath := flag.String("conf", "conf/servant.xml", "config file path")
+	flag.Parse()
+	xconf, err := conf.XConfigFromFile(*confPath)
 	if err != nil {
 		fmt.Printf("read config error: %s", err)
 		return
