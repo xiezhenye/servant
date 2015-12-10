@@ -2,7 +2,6 @@
 <config>
     <server>
         <listen>:2465</listen>
-        <!--<authDelay>30</authDelay>-->
     </server>
     <commands id="db1">
         <command id="foo">
@@ -19,6 +18,7 @@
         <dir id="binlog1">
             <root>/data/mysql0</root>
             <allow>get</allow>
+            <allow>post</allow>
             <allow>delete</allow><!-- put, post -->
             <pattern>log-bin\.\d+</pattern>
         </dir>
@@ -29,7 +29,7 @@
         <files id="db1" />
         <commands id="db1" />
     </user>
-    <log>
-        <path>/data/logs/servant/servant.log</path>
-    </log>
+    <auth enabled="1">
+        <maxTimeDelta>300</maxTimeDelta>
+    </auth>
 </config>

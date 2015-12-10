@@ -11,6 +11,7 @@ import (
 type XConfig struct {
 	XMLName  xml.Name    `xml:"config"`
 	Server   XServer     `xml:"server"`
+	Auth     XAuth       `xml:"auth"`
 	Users    []XUser     `xml:"user"`
 	Commands []XCommands `xml:"commands"`
 	Files    []XFiles    `xml:"files"`
@@ -18,6 +19,11 @@ type XConfig struct {
 
 type XServer struct {
 	Listen string      `xml:"listen"`
+}
+
+type XAuth struct {
+	Enabled       bool     `xml:"enabled,attr"`
+	MaxTimeDelta  uint32   `xml:"maxTimeDelta"`
 }
 
 type XUser struct {
@@ -89,6 +95,10 @@ func (conf *XConfig) ToConfig() *Config {
 	ret := Config{}
 	ret.Server = Server {
 		Listen: conf.Server.Listen,
+	}
+	ret.Auth = Auth {
+		Enabled:      conf.Auth.Enabled,
+		MaxTimeDelta: conf.Auth.MaxTimeDelta,
 	}
 	ret.Files = make(map[string]*Files)
 	for i := range(conf.Files) {
