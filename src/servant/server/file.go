@@ -34,57 +34,62 @@ func (self *Session) checkDirAllow(dirConf *conf.Dir, method string) error {
 	return nil
 }
 
-func (self *Session) serveFile(resp http.ResponseWriter, req *http.Request) {
-	defer req.Body.Close()
-	dirConf, relPath := self.findDirConfigByPath(req.URL.Path)
+func (self *Session) serveFile() {
+	defer self.req.Body.Close()
+	method := self.req.Method
+	urlPath := self.req.URL.Path
+	self.info("files", "+ %s %s %s", self.req.RemoteAddr, method, urlPath)
+	dirConf, relPath := self.findDirConfigByPath(urlPath)
 	if dirConf == nil {
-		resp.WriteHeader(http.StatusNotFound)
+		self.warn("files", "- dir of %s not found", urlPath)
+		self.resp.WriteHeader(http.StatusNotFound)
 		return
 	}
-	if self.checkDirAllow(dirConf, req.Method) != nil {
-		resp.WriteHeader(http.StatusForbidden)
+	if self.checkDirAllow(dirConf, method) != nil {
+		self.warn("files", "- dir of %s not allows %s", urlPath, method)
+		self.resp.WriteHeader(http.StatusForbidden)
 		return
 	}
     filePath := path.Clean(dirConf.Root + relPath)
 	if ! strings.HasPrefix(filePath, path.Clean(dirConf.Root) + "/") {
-		resp.WriteHeader(http.StatusForbidden)
+		self.resp.WriteHeader(http.StatusForbidden)
 		return
 	}
 	var file *os.File
 	defer file.Close()
 	var err error
-	switch req.Method {
+	switch method {
 	case "GET":
 		file, err = os.Open(filePath)
 		if err != nil {
-			resp.Header().Set("X-SERVANT-ERR", err.Error())
-			resp.WriteHeader(http.StatusInternalServerError)
+			self.resp.Header().Set("X-SERVANT-ERR", err.Error())
+			self.resp.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		_, _ = io.Copy(resp, file)
+		_, _ = io.Copy(self.resp, file)
 	case "POST":
 		file, err = os.OpenFile(filePath, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0664)
 		if err != nil {
-			resp.Header().Set("X-SERVANT-ERR", err.Error())
-			resp.WriteHeader(http.StatusInternalServerError)
+			self.resp.Header().Set("X-SERVANT-ERR", err.Error())
+			self.resp.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		_, _ = io.Copy(file, req.Body)
+		_, _ = io.Copy(file, self.req.Body)
 	case "DELETE":
 		err = os.Remove(filePath)
 		if err != nil {
-			resp.Header().Set("X-SERVANT-ERR", err.Error())
-			resp.WriteHeader(http.StatusInternalServerError)
+			self.resp.Header().Set("X-SERVANT-ERR", err.Error())
+			self.resp.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	case "PUT":
 		file, err = os.OpenFile(filePath, os.O_RDWR|os.O_TRUNC, 0664)
 		if err != nil {
-			resp.Header().Set("X-SERVANT-ERR", err.Error())
-			resp.WriteHeader(http.StatusInternalServerError)
+			self.resp.Header().Set("X-SERVANT-ERR", err.Error())
+			self.resp.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		_, _ = io.Copy(file, req.Body)
+		_, _ = io.Copy(file, self.req.Body)
 	}
-	//fmt.Println(filePath)
+	self.info("files", "- %s done", method)
 }

@@ -50,29 +50,30 @@ func getCmdExec(code string, query map[string][]string) *exec.Cmd {
 	return exec.Command(args[0], args[1:]...)
 }
 
-func (self *Session) serveCommand(resp http.ResponseWriter, req *http.Request) {
-	defer req.Body.Close()
-	if req.Method != "GET" && req.Method != "POST" {
-		resp.WriteHeader(http.StatusMethodNotAllowed)
+func (self *Session) serveCommand() {
+	defer self.req.Body.Close()
+	method := self.req.Method
+	if method != "GET" && method != "POST" {
+		self.resp.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	cmdConf := self.findCommandConfigByPath(req.URL.Path)
+	cmdConf := self.findCommandConfigByPath(self.req.URL.Path)
 	if cmdConf == nil {
-		resp.WriteHeader(http.StatusNotFound)
+		self.resp.WriteHeader(http.StatusNotFound)
 		return
 	}
 	var cmd *exec.Cmd
 	switch cmdConf.Lang {
 	case "exec":
-		cmd = getCmdExec(cmdConf.Code, req.URL.Query())
+		cmd = getCmdExec(cmdConf.Code, self.req.URL.Query())
 	case "bash", "":
-		cmd = getCmdBash(cmdConf.Code, req.URL.Query())
+		cmd = getCmdBash(cmdConf.Code, self.req.URL.Query())
 	default:
-		resp.WriteHeader(http.StatusInternalServerError)
+		self.resp.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if req.Method == "POST" {
-		cmd.Stdin = req.Body
+	if self.req.Method == "POST" {
+		cmd.Stdin = self.req.Body
 	}
 
 	cmd.Stderr = nil
@@ -80,8 +81,8 @@ func (self *Session) serveCommand(resp http.ResponseWriter, req *http.Request) {
 	out, err := cmd.StdoutPipe()
 	defer out.Close()
 	if err != nil {
-		resp.Header().Set("X-SERVANT-ERR", err.Error())
-		resp.WriteHeader(http.StatusInternalServerError)
+		self.resp.Header().Set("X-SERVANT-ERR", err.Error())
+		self.resp.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	var outBuf []byte
@@ -111,16 +112,16 @@ func (self *Session) serveCommand(resp http.ResponseWriter, req *http.Request) {
 	select {
 	case err = <-ch:
 		if err != nil {
-			resp.Header().Set("X-SERVANT-ERR", err.Error())
-			resp.WriteHeader(http.StatusBadGateway)
+			self.resp.Header().Set("X-SERVANT-ERR", err.Error())
+			self.resp.WriteHeader(http.StatusBadGateway)
 			return
 		}
 	case <-time.After(timeout * time.Second):
 		cmd.Process.Kill()
 		err = fmt.Errorf("command execution timeout")
-		resp.Header().Set("X-SERVANT-ERR", err.Error())
-		resp.WriteHeader(http.StatusGatewayTimeout)
+		self.resp.Header().Set("X-SERVANT-ERR", err.Error())
+		self.resp.WriteHeader(http.StatusGatewayTimeout)
 		return
 	}
-	_, _ = resp.Write(outBuf) // may log errors
+	_, _ = self.resp.Write(outBuf) // may log errors
 }

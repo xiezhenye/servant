@@ -12,35 +12,40 @@ type Server struct {
 }
 
 type Session struct {
-	id      uint64
+	id       uint64
 	*Server
+	resp     http.ResponseWriter
+	req      *http.Request
 }
 
 func NewServer(config *conf.Config) *Server {
 	return &Server {
-		config: config,
+		config:         config,
+		nextSessionId:  0,
 	}
 }
 
-func (self *Server) newSession() *Session {
+func (self *Server) newSession(resp http.ResponseWriter, req *http.Request) *Session {
 	sess := Session{
-		id: atomic.AddUint64(&(self.nextSessionId), 1),
-		Server: self,
+		id:      atomic.AddUint64(&(self.nextSessionId), 1),
+		Server:  self,
+		req:     req,
+		resp:    resp,
 	}
 	return &sess
 }
 
 func (self *Server) newFileServer() http.HandlerFunc {
 	return func(resp http.ResponseWriter, req *http.Request) {
-		sess := self.newSession()
-		sess.serveFile(resp, req)
+		sess := self.newSession(resp, req)
+		sess.serveFile()
 	}
 }
 
 func (self *Server) newCommandServer() http.HandlerFunc {
 	return func(resp http.ResponseWriter, req *http.Request) {
-		sess := self.newSession()
-		sess.serveCommand(resp, req)
+		sess := self.newSession(resp, req)
+		sess.serveCommand()
 	}
 }
 
