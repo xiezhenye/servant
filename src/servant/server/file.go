@@ -10,6 +10,9 @@ import (
 	"os"
 	"io"
 	"fmt"
+//	"time"
+	"errors"
+	"strconv"
 )
 
 var fileUrlRe, _ = regexp.Compile(`^/files/(\w+)/(\w+)(/.+)$`)
@@ -38,6 +41,16 @@ func (self *Session) checkDirAllow(dirConf *conf.Dir, method string) error {
 		}
 	}
 	return fmt.Errorf("method %s not allowed", method)
+}
+
+func (self *Session) openFileError(err error, method, filePath  string) {
+	e := ""
+	if err != nil {
+		e = err.Error()
+	}
+	self.warn("file", "- open file %s for %s failed: %s", filePath, method, e)
+	self.resp.Header().Set("X-SERVANT-ERR", err.Error())
+	self.resp.WriteHeader(http.StatusInternalServerError)
 }
 
 func (self *Session) serveFile() {
@@ -75,25 +88,45 @@ func (self *Session) serveFile() {
 	case "GET":
 		file, err = os.Open(filePath)
 		if err != nil {
-			self.warn("file", "- open file %s for %s failed", filePath, method)
-			self.resp.Header().Set("X-SERVANT-ERR", err.Error())
-			self.resp.WriteHeader(http.StatusInternalServerError)
+			self.openFileError(err, method, filePath)
 			return
 		}
-		_, err = io.Copy(self.resp, file)
+		defer file.Close()
+		info, err := file.Stat()
+		if err != nil || info.IsDir() {
+			self.openFileError(err, method, filePath)
+			return
+		}
+		rangeStr := self.req.Header.Get("Range")
+		ranges, err := parseRange(rangeStr, info.Size())
+		if err != nil || len(ranges) > 1 {
+			self.warn("file", "- bad range format or too many ranges(%s) for file %s", rangeStr, urlPath)
+			self.resp.Header().Set("X-SERVANT-ERR", err.Error())
+			self.resp.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		length := info.Size()
+		if ranges != nil && len(ranges) == 1 {
+			length = ranges[0].length
+			if _, err = file.Seek(ranges[0].start, os.SEEK_SET); err != nil {
+				self.openFileError(err, method, filePath)
+				return
+			}
+			self.resp.Header().Set("Content-Range", ranges[0].contentRange(info.Size()))
+		}
+		_, err = io.CopyN(self.resp, file, length)
 	case "POST":
 		file, err = os.OpenFile(filePath, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0664)
 		if err != nil {
-			self.warn("file", "- open file %s for %s failed", filePath, method)
-			self.resp.Header().Set("X-SERVANT-ERR", err.Error())
-			self.resp.WriteHeader(http.StatusInternalServerError)
+			self.openFileError(err, method, filePath)
 			return
 		}
+		defer file.Close()
 		_, err = io.Copy(file, self.req.Body)
 	case "DELETE":
 		err = os.Remove(filePath)
 		if err != nil {
-			self.warn("file", "- open file %s for %s failed", filePath, method)
+			self.warn("file", "- delete file %s failed", filePath)
 			self.resp.Header().Set("X-SERVANT-ERR", err.Error())
 			self.resp.WriteHeader(http.StatusInternalServerError)
 			return
@@ -101,13 +134,11 @@ func (self *Session) serveFile() {
 	case "PUT":
 		file, err = os.OpenFile(filePath, os.O_RDWR|os.O_TRUNC, 0664)
 		if err != nil {
-			self.warn("file", "- open file %s for %s failed", filePath, method)
-			self.resp.Header().Set("X-SERVANT-ERR", err.Error())
-			self.resp.WriteHeader(http.StatusInternalServerError)
+			self.openFileError(err, method, filePath)
 			return
 		}
+		defer file.Close()
 		_, err = io.Copy(file, self.req.Body)
-
 	}
 	if err != nil {
 		self.warn("file", "- io error: %s", err.Error())
@@ -115,3 +146,73 @@ func (self *Session) serveFile() {
 		self.info("file", "- %s done", method)
 	}
 }
+
+
+// copied from go source
+// httpRange specifies the byte range to be sent to the client.
+type httpRange struct {
+	start, length int64
+}
+func (r httpRange) contentRange(size int64) string {
+	return fmt.Sprintf("bytes %d-%d/%d", r.start, r.start+r.length-1, size)
+}
+// parseRange parses a Range header string as per RFC 2616.
+func parseRange(s string, size int64) ([]httpRange, error) {
+	if s == "" {
+		return nil, nil // header not present
+	}
+	const b = "bytes="
+	if !strings.HasPrefix(s, b) {
+		return nil, errors.New("invalid range")
+	}
+	var ranges []httpRange
+	for _, ra := range strings.Split(s[len(b):], ",") {
+		ra = strings.TrimSpace(ra)
+		if ra == "" {
+			continue
+		}
+		i := strings.Index(ra, "-")
+		if i < 0 {
+			return nil, errors.New("invalid range")
+		}
+		start, end := strings.TrimSpace(ra[:i]), strings.TrimSpace(ra[i+1:])
+		var r httpRange
+		if start == "" {
+			// If no start is specified, end specifies the
+			// range start relative to the end of the file.
+			i, err := strconv.ParseInt(end, 10, 64)
+			if err != nil {
+				return nil, errors.New("invalid range")
+			}
+			if i > size {
+				i = size
+			}
+			r.start = size - i
+			r.length = size - r.start
+		} else {
+			i, err := strconv.ParseInt(start, 10, 64)
+			if err != nil || i >= size || i < 0 {
+				return nil, errors.New("invalid range")
+			}
+			r.start = i
+			if end == "" {
+				// If no end is specified, range extends to end of the file.
+				r.length = size - r.start
+			} else {
+				i, err := strconv.ParseInt(end, 10, 64)
+				if err != nil || r.start > i {
+					return nil, errors.New("invalid range")
+				}
+				if i >= size {
+					i = size - 1
+				}
+				r.length = i - r.start + 1
+			}
+		}
+		ranges = append(ranges, r)
+	}
+	return ranges, nil
+}
+
+
+
