@@ -52,6 +52,91 @@ func (self *Session) openFileError(err error, method, filePath  string) {
 	self.resp.WriteHeader(http.StatusInternalServerError)
 }
 
+func (self *Session) serveGetFile(filePath string) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		self.openFileError(err, "GET", filePath)
+		return err
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil || info.IsDir() {
+		self.openFileError(err, "GET", filePath)
+		return err
+	}
+	rangeStr := self.req.Header.Get("Range")
+	ranges, err := parseRange(rangeStr, info.Size())
+	if err != nil || len(ranges) > 1 {
+		self.warn("file", "- bad range format or too many ranges(%s)", rangeStr)
+		self.resp.Header().Set(ServantErrHeader, err.Error())
+		self.resp.WriteHeader(http.StatusBadRequest)
+		return err
+	}
+	length := info.Size()
+	if ranges != nil && len(ranges) == 1 {
+		length = ranges[0].length
+		if _, err = file.Seek(ranges[0].start, os.SEEK_SET); err != nil {
+			self.openFileError(err, "GET", filePath)
+			return err
+		}
+		self.resp.Header().Set("Content-Range", ranges[0].contentRange(info.Size()))
+	}
+	_, err = io.CopyN(self.resp, file, length)
+	return err
+}
+
+func (self *Session) serveHeadFile(filePath string) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		self.openFileError(err, "HEAD", filePath)
+		return err
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil || info.IsDir() {
+		self.openFileError(err, "HEAD", filePath)
+		return err
+	}
+	self.resp.Header().Add("X-Servant-File-Size", strconv.FormatInt(info.Size(), 10))
+	self.resp.Header().Add("X-Servant-File-Mtime", info.ModTime().String())
+	self.resp.Header().Add("X-Servant-File-Mode", info.Mode().String())
+	self.resp.Header().Add("Connection", "close")
+	return nil
+}
+
+func (self *Session) servePostFile(filePath string) error {
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0664)
+	if err != nil {
+		self.openFileError(err, "POST", filePath)
+		return err
+	}
+	defer file.Close()
+	_, err = io.Copy(file, self.req.Body)
+	return err
+}
+
+func (self *Session) servePutFile(filePath string) error {
+	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_TRUNC, 0664)
+	if err != nil {
+		self.openFileError(err, "PUT", filePath)
+		return err
+	}
+	defer file.Close()
+	_, err = io.Copy(file, self.req.Body)
+	return err
+}
+
+func (self *Session) serveDeleteFile(filePath string) error {
+	err := os.Remove(filePath)
+	if err != nil {
+		self.warn("file", "- delete file %s failed", filePath)
+		self.resp.Header().Set(ServantErrHeader, err.Error())
+		self.resp.WriteHeader(http.StatusInternalServerError)
+		return err
+	}
+	return nil
+}
+
 func (self *Session) serveFile() {
 	defer self.req.Body.Close()
 	method := self.req.Method
@@ -63,7 +148,6 @@ func (self *Session) serveFile() {
 		self.resp.WriteHeader(http.StatusForbidden)
 		return
 	}
-
 	dirConf, relPath := self.findDirConfigByPath(urlPath)
 	if dirConf == nil {
 		self.warn("file", "- dir of %s not found", urlPath)
@@ -81,79 +165,17 @@ func (self *Session) serveFile() {
 		self.resp.WriteHeader(http.StatusForbidden)
 		return
 	}
-	var file *os.File
-	defer file.Close()
 	switch method {
 	case "HEAD":
-		file, err = os.Open(filePath)
-		if err != nil {
-			self.openFileError(err, method, filePath)
-			return
-		}
-		defer file.Close()
-		info, err := file.Stat()
-		if err != nil || info.IsDir() {
-			self.openFileError(err, method, filePath)
-			return
-		}
-		self.resp.Header().Add("X-Servant-File-Size", strconv.FormatInt(info.Size(), 10))
-		self.resp.Header().Add("X-Servant-File-Mtime", info.ModTime().String())
-		self.resp.Header().Add("X-Servant-File-Mode", info.Mode().String())
-		self.resp.Header().Add("Connection", "close")
+		err = self.serveHeadFile(filePath)
 	case "GET":
-		file, err = os.Open(filePath)
-		if err != nil {
-			self.openFileError(err, method, filePath)
-			return
-		}
-		defer file.Close()
-		info, err := file.Stat()
-		if err != nil || info.IsDir() {
-			self.openFileError(err, method, filePath)
-			return
-		}
-		rangeStr := self.req.Header.Get("Range")
-		ranges, err := parseRange(rangeStr, info.Size())
-		if err != nil || len(ranges) > 1 {
-			self.warn("file", "- bad range format or too many ranges(%s) for file %s", rangeStr, urlPath)
-			self.resp.Header().Set(ServantErrHeader, err.Error())
-			self.resp.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		length := info.Size()
-		if ranges != nil && len(ranges) == 1 {
-			length = ranges[0].length
-			if _, err = file.Seek(ranges[0].start, os.SEEK_SET); err != nil {
-				self.openFileError(err, method, filePath)
-				return
-			}
-			self.resp.Header().Set("Content-Range", ranges[0].contentRange(info.Size()))
-		}
-		_, err = io.CopyN(self.resp, file, length)
+		err = self.serveGetFile(filePath)
 	case "POST":
-		file, err = os.OpenFile(filePath, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0664)
-		if err != nil {
-			self.openFileError(err, method, filePath)
-			return
-		}
-		defer file.Close()
-		_, err = io.Copy(file, self.req.Body)
+		err = self.servePostFile(filePath)
 	case "DELETE":
-		err = os.Remove(filePath)
-		if err != nil {
-			self.warn("file", "- delete file %s failed", filePath)
-			self.resp.Header().Set(ServantErrHeader, err.Error())
-			self.resp.WriteHeader(http.StatusInternalServerError)
-			return
-		}
+		err = self.serveDeleteFile(filePath)
 	case "PUT":
-		file, err = os.OpenFile(filePath, os.O_RDWR|os.O_TRUNC, 0664)
-		if err != nil {
-			self.openFileError(err, method, filePath)
-			return
-		}
-		defer file.Close()
-		_, err = io.Copy(file, self.req.Body)
+		err = self.servePutFile(filePath)
 	}
 	if err != nil {
 		self.warn("file", "- io error: %s", err.Error())
