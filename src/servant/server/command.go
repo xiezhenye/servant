@@ -93,7 +93,7 @@ func (self *Session) serveCommand() {
 	defer out.Close()
 	if err != nil {
 		self.warn("command", "- %s", err.Error())
-		self.resp.Header().Set("X-SERVANT-ERR", err.Error())
+		self.resp.Header().Set(ServantErrHeader, err.Error())
 		self.resp.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -125,7 +125,7 @@ func (self *Session) serveCommand() {
 	case err = <-ch:
 		if err != nil {
 			self.warn("command", "- execution error: %s", err.Error())
-			self.resp.Header().Set("X-SERVANT-ERR", err.Error())
+			self.resp.Header().Set(ServantErrHeader, err.Error())
 			self.resp.WriteHeader(http.StatusBadGateway)
 			return
 		}
@@ -133,7 +133,7 @@ func (self *Session) serveCommand() {
 		cmd.Process.Kill()
 		err = fmt.Errorf("command execution timeout: %d", timeout)
 		self.warn("command", "- %s", err.Error())
-		self.resp.Header().Set("X-SERVANT-ERR", err.Error())
+		self.resp.Header().Set(ServantErrHeader, err.Error())
 		self.resp.WriteHeader(http.StatusGatewayTimeout)
 		return
 	}

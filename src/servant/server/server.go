@@ -6,6 +6,8 @@ import (
 	"sync/atomic"
 )
 
+const ServantErrHeader = "X-Servant-Err"
+
 type Server struct {
 	config          *conf.Config
 	nextSessionId   uint64

@@ -17,7 +17,6 @@ import (
 
 var fileUrlRe, _ = regexp.Compile(`^/files/(\w+)/(\w+)(/.+)$`)
 
-
 func (self *Session) findDirConfigByPath(path string) (*conf.Dir, string) {
 	m := fileUrlRe.FindStringSubmatch(path)
 	if len(m) != 4 {
@@ -49,7 +48,7 @@ func (self *Session) openFileError(err error, method, filePath  string) {
 		e = err.Error()
 	}
 	self.warn("file", "- open file %s for %s failed: %s", filePath, method, e)
-	self.resp.Header().Set("X-SERVANT-ERR", err.Error())
+	self.resp.Header().Set(ServantErrHeader, err.Error())
 	self.resp.WriteHeader(http.StatusInternalServerError)
 }
 
@@ -85,6 +84,22 @@ func (self *Session) serveFile() {
 	var file *os.File
 	defer file.Close()
 	switch method {
+	case "HEAD":
+		file, err = os.Open(filePath)
+		if err != nil {
+			self.openFileError(err, method, filePath)
+			return
+		}
+		defer file.Close()
+		info, err := file.Stat()
+		if err != nil || info.IsDir() {
+			self.openFileError(err, method, filePath)
+			return
+		}
+		self.resp.Header().Add("X-Servant-File-Size", strconv.FormatInt(info.Size(), 10))
+		self.resp.Header().Add("X-Servant-File-Mtime", info.ModTime().String())
+		self.resp.Header().Add("X-Servant-File-Mode", info.Mode().String())
+		self.resp.Header().Add("Connection", "close")
 	case "GET":
 		file, err = os.Open(filePath)
 		if err != nil {
@@ -101,7 +116,7 @@ func (self *Session) serveFile() {
 		ranges, err := parseRange(rangeStr, info.Size())
 		if err != nil || len(ranges) > 1 {
 			self.warn("file", "- bad range format or too many ranges(%s) for file %s", rangeStr, urlPath)
-			self.resp.Header().Set("X-SERVANT-ERR", err.Error())
+			self.resp.Header().Set(ServantErrHeader, err.Error())
 			self.resp.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -127,7 +142,7 @@ func (self *Session) serveFile() {
 		err = os.Remove(filePath)
 		if err != nil {
 			self.warn("file", "- delete file %s failed", filePath)
-			self.resp.Header().Set("X-SERVANT-ERR", err.Error())
+			self.resp.Header().Set(ServantErrHeader, err.Error())
 			self.resp.WriteHeader(http.StatusInternalServerError)
 			return
 		}
