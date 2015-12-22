@@ -6,6 +6,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"time"
+	"net"
 )
 
 /*
@@ -14,6 +15,7 @@ import (
  */
 func (self *Session) auth() (err error) {
 	defer func() {
+		// deley 1s on fail to prevent attact
 		if err != nil {
 			time.Sleep(1 * time.Second)
 		}
@@ -21,34 +23,59 @@ func (self *Session) auth() (err error) {
 	if !self.config.Auth.Enabled {
 		return nil
 	}
-	authStr := self.req.Header.Get("Authorization")
-	segs := strings.SplitN(authStr, " ", 3)
-	if len(segs) < 3 {
-		return fmt.Errorf("bad Authorization header")
-	}
-	reqUser := segs[0]
-	tsStr := segs[1]
-	reqHash := segs[2]
 
-	ts, err := strconv.ParseInt(tsStr, 10, 64)
+	authStr := self.req.Header.Get("Authorization")
+	reqUser, reqHash, ts, err := parseAuthHeader(authStr)
 	if err != nil {
 		return err
 	}
-	nowTs := time.Now().Unix()
-	maxDelta := self.config.Auth.MaxTimeDelta
-	if nowTs - ts > int64(maxDelta) || ts - nowTs > int64(maxDelta) {
-		return fmt.Errorf("timestamp delta too large")
-	}
+
 	user, ok := self.config.Users[reqUser]
 	if !ok {
 		return fmt.Errorf("user %s not found", reqUser)
 	}
-	strToHash := reqUser + user.Key + tsStr + self.req.Method + self.req.RequestURI
-	fmt.Println(strToHash)
-	sha1Sum := sha1.Sum([]byte(strToHash))
-	realHash := hex.EncodeToString(sha1Sum[:])
-	if reqHash != realHash {
-		return fmt.Errorf("auth failed")
+	if len(user.Hosts) > 0 {
+		ok = false
+		for _, host := range (user.Hosts) {
+			_, allowedNet, err := net.ParseCIDR(host)
+			if err != nil {
+				continue
+			}
+			if allowedNet.Contains(net.ParseIP(self.req.RemoteAddr)) {
+				ok = true
+				break
+			}
+		}
+		if !ok {
+			return fmt.Errorf("remote host is denied")
+		}
+	}
+	if user.Key != "" {
+		nowTs := time.Now().Unix()
+		maxDelta := self.config.Auth.MaxTimeDelta
+		if nowTs - ts > int64(maxDelta) || ts - nowTs > int64(maxDelta) {
+			return fmt.Errorf("timestamp delta too large")
+		}
+		strToHash := reqUser + user.Key + strconv.FormatInt(ts, 10) + self.req.Method + self.req.RequestURI
+		sha1Sum := sha1.Sum([]byte(strToHash))
+		realHash := hex.EncodeToString(sha1Sum[:])
+		if reqHash != realHash {
+			return fmt.Errorf("auth failed")
+		}
 	}
 	return nil
+}
+
+func parseAuthHeader(authStr string) (user, hash string, ts int64, err error){
+	segs := strings.SplitN(authStr, " ", 3)
+	user = segs[0]
+	if len(segs) < 3 {
+		hash = ""
+		ts = 0
+		return
+	}
+	tsStr := segs[1]
+	hash = segs[2]
+	ts, err = strconv.ParseInt(tsStr, 10, 64)
+	return
 }

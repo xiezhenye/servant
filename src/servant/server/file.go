@@ -250,6 +250,3 @@ func parseRange(s string, size int64) ([]httpRange, error) {
 	}
 	return ranges, nil
 }
-
-
-
