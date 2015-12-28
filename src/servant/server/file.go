@@ -33,13 +33,30 @@ func (self *Session) findDirConfigByPath(path string) (*conf.Dir, string) {
 	return dirConf, m[3]
 }
 
-func (self *Session) checkDirAllow(dirConf *conf.Dir, method string) error {
-	for _, allowed := range(dirConf.Allow) {
+func checkDirAllow(dirConf *conf.Dir, relPath string, method string) error {
+	ok := false
+	for _, allowed := range(dirConf.Allows) {
 		if allowed == method {
-			return nil
+			ok = true
+			break
 		}
 	}
-	return fmt.Errorf("method %s not allowed", method)
+	if !ok {
+		return fmt.Errorf("method %s not allowed", method)
+	}
+	if len(dirConf.Patterns) > 0 {
+		ok = false
+		for _, pattern := range(dirConf.Patterns) {
+			ok, err := regexp.MatchString(pattern, relPath)
+			if err != nil && ok {
+				break
+			}
+		}
+		if ! ok {
+			return fmt.Errorf("%s not match allowed pattern", relPath, method)
+		}
+	}
+	return nil
 }
 
 func (self *Session) openFileError(err error, method, filePath  string) {
@@ -142,8 +159,8 @@ func (self *Session) serveFile() {
 	method := self.req.Method
 	urlPath := self.req.URL.Path
 	self.info("file", "+ %s %s %s", self.req.RemoteAddr, method, urlPath)
-	err := self.auth()
-	if err != nil {
+	var err error
+	if err = self.auth(); err != nil {
 		self.warn("file", "- auth failed: %s", err.Error())
 		self.resp.WriteHeader(http.StatusForbidden)
 		return
@@ -154,14 +171,14 @@ func (self *Session) serveFile() {
 		self.resp.WriteHeader(http.StatusNotFound)
 		return
 	}
-	if self.checkDirAllow(dirConf, method) != nil {
-		self.warn("file", "- dir of %s not allows %s", urlPath, method)
+	if err = checkDirAllow(dirConf, relPath, method); err != nil {
+		self.warn("file", "- %s", err.Error())
 		self.resp.WriteHeader(http.StatusForbidden)
 		return
 	}
-    filePath := path.Clean(dirConf.Root + relPath)
+	filePath := path.Clean(dirConf.Root + relPath)
 	if ! strings.HasPrefix(filePath, path.Clean(dirConf.Root) + "/") {
-		self.warn("file", "- attempt to %s out of root: %s", method, urlPath)
+		self.warn("file", "- attempt to %s out of root: %s", method, relPath)
 		self.resp.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -183,7 +200,6 @@ func (self *Session) serveFile() {
 		self.info("file", "- %s done", method)
 	}
 }
-
 
 // copied from go source
 // httpRange specifies the byte range to be sent to the client.

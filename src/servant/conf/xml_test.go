@@ -38,83 +38,88 @@ func TestConfig(t *testing.T) {
         <commands id="db1" />
     </user>
 </config>`
-	conf, err := XConfigFromData([]byte(data))
+	xconf, err := XConfigFromData([]byte(data))
 	if err != nil {
 		t.Errorf("parse error: %s", err)
 		return
 	}
-
+	conf := xconf.ToConfig()
 	if len(conf.Commands) != 1 {
 		t.Errorf("parse commands failed")
 		return
 	}
-	if conf.Commands[0].Name != "db1" {
+	if len(conf.Commands) != 1 {
+
+	}
+	if _, ok := conf.Commands["db1"]; !ok {
 		t.Errorf("commands name wrong")
 	}
-	if len(conf.Commands[0].Commands) != 3 {
+	if len(conf.Commands["db1"].Commands) != 3 {
 		t.Errorf("commands members wrong")
 		return
 	}
-	if conf.Commands[0].Commands[0].Name != "foo" {
+	foo, ok := conf.Commands["db1"].Commands["foo"]
+	if !ok {
 		t.Errorf("command name wrong")
+		return
 	}
-	if conf.Commands[0].Commands[0].Code != "echo hello" {
+	if foo.Code != "echo hello" {
 		t.Errorf("command code wrong")
 	}
-	if conf.Commands[0].Commands[0].Timeout != 0 {
+	if foo.Timeout != 0 {
 		t.Errorf("timeout code wrong")
 	}
-	if conf.Commands[0].Commands[1].Name != "bar" {
-		t.Errorf("command name wrong")
-	}
-	if conf.Commands[0].Commands[1].Code != "echo world" {
+	bar, ok := conf.Commands["db1"].Commands["bar"]
+	if bar.Code != "echo world" {
 		t.Errorf("command code wrong")
 	}
-	if conf.Commands[0].Commands[1].Lang != "bash" {
+	if bar.Lang != "bash" {
 		t.Errorf("command lang wrong")
 	}
-	if conf.Commands[0].Commands[1].Timeout != 0 {
+	if bar.Timeout != 0 {
 		t.Errorf("timeout code wrong")
 	}
-	if conf.Commands[0].Commands[2].Name != "sleep" {
-		t.Errorf("command name wrong")
-	}
-	if conf.Commands[0].Commands[2].Code != "sleep 1000" {
+	sleep, ok := conf.Commands["db1"].Commands["sleep"]
+
+	if sleep.Code != "sleep 1000" {
 		t.Errorf("command code wrong")
 	}
-	if conf.Commands[0].Commands[2].Lang != "" {
+	if sleep.Lang != "" {
 		t.Errorf("command lang wrong")
 	}
-	if conf.Commands[0].Commands[2].Timeout != 5 {
+	if sleep.Timeout != 5 {
 		t.Errorf("timeout code wrong")
 	}
 
 	if len(conf.Files) != 1 {
 		t.Errorf("parse files failed")
 	}
-	if conf.Files[0].Name != "db1" {
+	if _, ok := conf.Files["db1"]; !ok {
 		t.Errorf("files name wrong")
+		return
 	}
-	if len(conf.Files[0].Dirs) != 1 {
+	if len(conf.Files["db1"].Dirs) != 1 {
 		t.Errorf("files members wrong")
 	}
-	if conf.Files[0].Dirs[0].Name != "binlog1" {
+	binlog1, ok := conf.Files["db1"].Dirs["binlog1"]
+	if !ok {
 		t.Errorf("dir name wrong")
+		return
 	}
-	if conf.Files[0].Dirs[0].Root != "/data/mysql0" {
+	if binlog1.Root != "/data/mysql0" {
 		t.Errorf("dir root wrong")
 	}
-	if conf.Files[0].Dirs[0].Pattern != "log-bin" {
+	if binlog1.Patterns[0] != "log-bin" {
 		t.Errorf("dir pattern wrong")
 	}
-	if len(conf.Files[0].Dirs[0].Allow) != 2 {
+	if len(binlog1.Allows) != 2 {
 		t.Errorf("dir allows wrong")
 	}
-	sort.Strings(conf.Files[0].Dirs[0].Allow)
-	if conf.Files[0].Dirs[0].Allow[0] != "delete" {
-		t.Errorf("allows 0 not delete")
+	sort.Strings(binlog1.Allows)
+	if binlog1.Allows[0] != "DELETE" {
+		t.Errorf("allows 0 not DELETE")
 	}
-	if conf.Files[0].Dirs[0].Allow[1] != "get" {
+	if binlog1.Allows[1] != "GET" {
 		t.Errorf("allows 0 not get")
 	}
 	//fmt.Printf("%v\n", conf)

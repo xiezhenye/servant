@@ -40,6 +40,6 @@ type Files struct {
 
 type Dir struct {
 	Root     string
-	Allow    []string
-	Pattern  string
+	Allows    []string
+	Patterns  []string
 }

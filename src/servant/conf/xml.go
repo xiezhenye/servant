@@ -54,8 +54,8 @@ type XFiles struct {
 type XDir struct {
 	Name     string     `xml:"id,attr"`
 	Root     string     `xml:"root"`
-	Allow    []string   `xml:"allow"`
-	Pattern  string     `xml:"pattern"`
+	Allows    []string   `xml:"allow"`
+	Patterns  []string     `xml:"pattern"`
 }
 
 type XUserFiles struct {
@@ -101,51 +101,55 @@ func (conf *XConfig) ToConfig() *Config {
 		MaxTimeDelta: conf.Auth.MaxTimeDelta,
 	}
 	ret.Files = make(map[string]*Files)
-	for i := range(conf.Files) {
-		fname := conf.Files[i].Name
+	for _, file := range(conf.Files) {
+		fname := file.Name
 		ret.Files[fname] = &Files{}
 		ret.Files[fname].Dirs = make(map[string]*Dir)
-		for j := range(conf.Files[i].Dirs) {
-			dname := conf.Files[i].Dirs[j].Name
+		for _, dir := range(file.Dirs) {
+			dname := dir.Name
 			ret.Files[fname].Dirs[dname] = &Dir{}
-			ret.Files[fname].Dirs[dname].Root = path.Clean(strings.TrimSpace(conf.Files[i].Dirs[j].Root))
-			ret.Files[fname].Dirs[dname].Pattern = strings.TrimSpace(ret.Files[fname].Dirs[dname].Pattern)
-			ret.Files[fname].Dirs[dname].Allow = make([]string, 0, 4)
-			for k := range(conf.Files[i].Dirs[j].Allow) {
-				method := strings.ToUpper(strings.TrimSpace(conf.Files[i].Dirs[j].Allow[k]))
-				ret.Files[fname].Dirs[dname].Allow = append(ret.Files[fname].Dirs[dname].Allow, method)
+			ret.Files[fname].Dirs[dname].Root = path.Clean(strings.TrimSpace(dir.Root))
+			ret.Files[fname].Dirs[dname].Allows = make([]string, 0, 4)
+			ret.Files[fname].Dirs[dname].Patterns = make([]string, 0, 4)
+			for _, method := range(dir.Allows) {
+				ret.Files[fname].Dirs[dname].Allows = append(ret.Files[fname].Dirs[dname].Allows,
+					strings.ToUpper(strings.TrimSpace(method)))
+			}
+			for _, pattern := range(dir.Patterns) {
+				ret.Files[fname].Dirs[dname].Patterns = append(ret.Files[fname].Dirs[dname].Patterns,
+					strings.TrimSpace(pattern))
 			}
 		}
 	}
 	ret.Commands = make(map[string]*Commands)
-	for i := range(conf.Commands) {
-		csname := conf.Commands[i].Name
+	for _, commands := range(conf.Commands) {
+		csname := commands.Name
 		ret.Commands[csname] = &Commands{}
 		ret.Commands[csname].Commands = make(map[string]*Command)
-		for j := range(conf.Commands[i].Commands) {
-			cname := conf.Commands[i].Commands[j].Name
+		for _, command := range(commands.Commands) {
+			cname := command.Name
 			ret.Commands[csname].Commands[cname] = &Command{}
-			ret.Commands[csname].Commands[cname].Code = strings.TrimSpace(conf.Commands[i].Commands[j].Code)
-			ret.Commands[csname].Commands[cname].Lang = conf.Commands[i].Commands[j].Lang
-			ret.Commands[csname].Commands[cname].Timeout = conf.Commands[i].Commands[j].Timeout
+			ret.Commands[csname].Commands[cname].Code = strings.TrimSpace(command.Code)
+			ret.Commands[csname].Commands[cname].Lang = command.Lang
+			ret.Commands[csname].Commands[cname].Timeout = command.Timeout
 		}
 	}
 	ret.Users = make(map[string]*User)
-	for i := range(conf.Users) {
-		uname := conf.Users[i].Name
+	for _, user := range(conf.Users) {
+		uname := user.Name
 		ret.Users[uname] = &User{}
-		ret.Users[uname].Key = strings.TrimSpace(conf.Users[i].Key)
-		ret.Users[uname].Hosts = make([]string, len(conf.Users[i].Hosts))
-		for j := range(conf.Users[i].Hosts) {
-			ret.Users[uname].Hosts[j] = strings.TrimSpace(conf.Users[i].Hosts[j])
+		ret.Users[uname].Key = strings.TrimSpace(user.Key)
+		ret.Users[uname].Hosts = make([]string, len(user.Hosts))
+		for j := range(user.Hosts) {
+			ret.Users[uname].Hosts[j] = strings.TrimSpace(user.Hosts[j])
 		}
 		ret.Users[uname].Commands = make([]string, 0, 2)
 		ret.Users[uname].Files = make([]string, 0, 2)
-		for j := range(conf.Users[i].Commands) {
-			ret.Users[uname].Commands = append(ret.Users[uname].Commands, conf.Users[i].Commands[j].Name)
+		for _, command := range(user.Commands) {
+			ret.Users[uname].Commands = append(ret.Users[uname].Commands, command.Name)
 		}
-		for j := range(conf.Users[i].Files) {
-			ret.Users[uname].Files = append(ret.Users[uname].Files, conf.Users[i].Commands[j].Name)
+		for _, file := range(user.Files) {
+			ret.Users[uname].Files = append(ret.Users[uname].Files, file.Name)
 		}
 	}
 	return &ret
