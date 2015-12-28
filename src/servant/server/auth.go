@@ -23,32 +23,17 @@ func (self *Session) auth() (err error) {
 	if !self.config.Auth.Enabled {
 		return nil
 	}
-
 	authStr := self.req.Header.Get("Authorization")
 	reqUser, reqHash, ts, err := parseAuthHeader(authStr)
 	if err != nil {
 		return err
 	}
-
 	user, ok := self.config.Users[reqUser]
 	if !ok {
 		return fmt.Errorf("user %s not found", reqUser)
 	}
-	if len(user.Hosts) > 0 {
-		ok = false
-		for _, host := range (user.Hosts) {
-			_, allowedNet, err := net.ParseCIDR(host)
-			if err != nil {
-				continue
-			}
-			if allowedNet.Contains(net.ParseIP(self.req.RemoteAddr)) {
-				ok = true
-				break
-			}
-		}
-		if !ok {
-			return fmt.Errorf("remote host is denied")
-		}
+	if err = checkHosts(self.req.RemoteAddr, user.Hosts); err != nil {
+		return err
 	}
 	if user.Key != "" {
 		nowTs := time.Now().Unix()
@@ -78,4 +63,25 @@ func parseAuthHeader(authStr string) (user, hash string, ts int64, err error){
 	hash = segs[2]
 	ts, err = strconv.ParseInt(tsStr, 10, 64)
 	return
+}
+
+func checkHosts(remoteAddr string, hosts []string) error {
+	if len(hosts) <= 0 {
+		return nil
+	}
+	ok := false
+	for _, host := range (hosts) {
+		_, allowedNet, err := net.ParseCIDR(host)
+		if err != nil {
+			continue
+		}
+		if allowedNet.Contains(net.ParseIP(remoteAddr)) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("remote host is denied")
+	}
+	return nil
 }
