@@ -5,19 +5,20 @@
     </server>
     <commands id="db1">
         <command id="foo">
-            echo "hello world"
+            <code>echo "hello world"</code>
         </command>
         <command id="grep" lang="exec">
-            grep $s
+            <code> grep $s</code>
         </command>
         <command id="sleep" timeout="5">
-            sleep 1000
+            <code> sleep 1000</code>
         </command>
     </commands>
     <files id="db1">
         <dir id="binlog1">
             <root>/data/mysql0</root>
             <allow>get</allow>
+            <allow>head</allow>
             <allow>post</allow>
             <allow>delete</allow><!-- put, post -->
             <pattern>log-bin\.\d+</pattern>
@@ -25,11 +26,11 @@
     </files>
     <user id="db_ha">
         <key>s4xuF@P0qj28fwL</key>
-        <host>10.200.180.2</host>
+        <host>10.200.180.2/24</host>
         <files id="db1" />
         <commands id="db1" />
     </user>
-    <auth enabled="1">
+    <auth enabled="0">
         <maxTimeDelta>300</maxTimeDelta>
     </auth>
 </config>
