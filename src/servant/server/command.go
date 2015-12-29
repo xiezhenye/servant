@@ -6,7 +6,6 @@ import (
 	"servant/conf"
 	"io/ioutil"
 	"time"
-	"math"
 	"fmt"
 )
 
@@ -72,6 +71,23 @@ func (self *Session) serveCommand() {
 		self.resp.WriteHeader(http.StatusNotFound)
 		return
 	}
+
+	if cmdConf.Lock.Name == "" {
+		self.execCommand(cmdConf)
+	} else {
+		if cmdConf.Lock.Wait {
+			GetLock(cmdConf.Lock.Name).TimeoutWith(time.Duration(cmdConf.Lock.Timeout) * time.Second, func() {
+				self.execCommand(cmdConf)
+			})
+		} else {
+			GetLock(cmdConf.Lock.Name).TryWith(func(){
+				self.execCommand(cmdConf)
+			})
+		}
+	}
+}
+
+func (self *Session) execCommand(cmdConf *conf.Command) {
 	var cmd *exec.Cmd
 	switch cmdConf.Lang {
 	case "exec":
@@ -98,6 +114,7 @@ func (self *Session) serveCommand() {
 		return
 	}
 	var outBuf []byte
+	timeout := time.Duration(cmdConf.Timeout)
 	ch := make(chan error, 1)
 	go func() {
 		err = cmd.Start()
@@ -117,10 +134,6 @@ func (self *Session) serveCommand() {
 		}
 		ch <- nil
 	}()
-	timeout := time.Duration(cmdConf.Timeout)
-	if timeout <= 0 || timeout > math.MaxUint32 {
-		timeout = math.MaxUint32
-	}
 	select {
 	case err = <-ch:
 		if err != nil {

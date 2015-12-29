@@ -29,9 +29,16 @@ type Commands struct {
 }
 
 type Command struct {
-	Lang    string
-	Code    string
-	Timeout uint32
+	Lang         string
+	Code         string
+	Timeout      uint32
+	Lock         Lock
+}
+
+type Lock struct {
+	Name     string
+	Timeout  uint
+	Wait     bool
 }
 
 type Files struct {

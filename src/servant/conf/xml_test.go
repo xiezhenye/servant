@@ -4,6 +4,7 @@ import (
 	"testing"
 	"fmt"
 	"sort"
+	"math"
 )
 
 func TestConfig(t *testing.T) {
@@ -12,13 +13,13 @@ func TestConfig(t *testing.T) {
 	<server><listen>:2465</listen></server>
     <commands id="db1">
         <command id="foo">
-            echo hello
+            <code>echo hello</code>
         </command>
         <command id="bar" lang="bash">
-            echo world
+            <code>echo world</code>
         </command>
         <command id="sleep" timeout="5">
-            sleep 1000
+           <code> sleep 1000</code>
         </command>
     </commands>
     <files id="db1">
@@ -66,7 +67,7 @@ func TestConfig(t *testing.T) {
 	if foo.Code != "echo hello" {
 		t.Errorf("command code wrong")
 	}
-	if foo.Timeout != 0 {
+	if foo.Timeout != math.MaxUint32 {
 		t.Errorf("timeout code wrong")
 	}
 	bar, ok := conf.Commands["db1"].Commands["bar"]
@@ -76,7 +77,7 @@ func TestConfig(t *testing.T) {
 	if bar.Lang != "bash" {
 		t.Errorf("command lang wrong")
 	}
-	if bar.Timeout != 0 {
+	if bar.Timeout != math.MaxUint32 {
 		t.Errorf("timeout code wrong")
 	}
 	sleep, ok := conf.Commands["db1"].Commands["sleep"]

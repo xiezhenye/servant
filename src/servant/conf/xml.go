@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"path"
+	"math"
 )
 
 type XConfig struct {
@@ -40,10 +41,17 @@ type XCommands struct {
 }
 
 type XCommand struct {
-	Name     string      `xml:"id,attr"`
-	Lang     string	     `xml:"lang,attr"`
-	Code     string      `xml:",chardata"`
-	Timeout  uint32      `xml:"timeout,attr"`
+	Name         string  `xml:"id,attr"`
+	Lang         string	 `xml:"lang,attr"`
+	Code         string  `xml:"code"`
+	Timeout      uint32  `xml:"timeout,attr"`
+	Lock         XLock   `xml:"lock"`
+}
+
+type XLock struct {
+	Name     string  `xml:"id,attr"`
+	Timeout  uint    `xml:"timeout,attr"`
+	Wait     bool    `xml:"wait,attr"`
 }
 
 type XFiles struct {
@@ -52,10 +60,10 @@ type XFiles struct {
 }
 
 type XDir struct {
-	Name     string     `xml:"id,attr"`
-	Root     string     `xml:"root"`
-	Allows    []string   `xml:"allow"`
-	Patterns  []string     `xml:"pattern"`
+	Name      string    `xml:"id,attr"`
+	Root      string    `xml:"root"`
+	Allows    []string  `xml:"allow"`
+	Patterns  []string  `xml:"pattern"`
 }
 
 type XUserFiles struct {
@@ -131,7 +139,16 @@ func (conf *XConfig) ToConfig() *Config {
 			ret.Commands[csname].Commands[cname] = &Command{}
 			ret.Commands[csname].Commands[cname].Code = strings.TrimSpace(command.Code)
 			ret.Commands[csname].Commands[cname].Lang = command.Lang
+			if command.Timeout == 0 {
+				command.Timeout = math.MaxUint32
+			}
 			ret.Commands[csname].Commands[cname].Timeout = command.Timeout
+			ret.Commands[csname].Commands[cname].Lock.Name = strings.TrimSpace(command.Lock.Name)
+			if command.Lock.Timeout == 0 {
+				command.Lock.Timeout = math.MaxUint32
+			}
+			ret.Commands[csname].Commands[cname].Lock.Timeout = command.Lock.Timeout
+			ret.Commands[csname].Commands[cname].Lock.Wait = command.Lock.Wait
 		}
 	}
 	ret.Users = make(map[string]*User)
