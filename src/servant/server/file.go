@@ -46,14 +46,15 @@ func checkDirAllow(dirConf *conf.Dir, relPath string, method string) error {
 	}
 	if len(dirConf.Patterns) > 0 {
 		ok = false
+		var err error
 		for _, pattern := range(dirConf.Patterns) {
-			ok, err := regexp.MatchString(pattern, relPath)
-			if err != nil && ok {
+			ok, err = regexp.MatchString(pattern, relPath)
+			if err == nil && ok {
 				break
 			}
 		}
 		if ! ok {
-			return fmt.Errorf("%s not match allowed pattern", relPath, method)
+			return fmt.Errorf("%s not match allowed pattern", relPath)
 		}
 	}
 	return nil
