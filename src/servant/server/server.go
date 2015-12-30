@@ -4,6 +4,7 @@ import (
 	"servant/conf"
 	"net/http"
 	"sync/atomic"
+	"time"
 )
 
 const ServantErrHeader = "X-Servant-Err"
@@ -55,6 +56,14 @@ func (self *Server) Run() {
 	mux := http.NewServeMux()
 	mux.Handle("/files/", self.newFileServer())
 	mux.Handle("/commands/", self.newCommandServer())
-	http.ListenAndServe(self.config.Server.Listen, mux)
+	s := &http.Server{
+		Addr:           self.config.Server.Listen,
+		Handler:        mux,
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   10 * time.Second,
+		MaxHeaderBytes: 8192,
+	}
+	s.ListenAndServe()
+	//http.ListenAndServe(self.config.Server.Listen, mux)
 }
 
