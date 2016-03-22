@@ -33,26 +33,26 @@ func GetLock(name string) Lock {
 }
 
 
-func (self *ChanLock) lock() {
-	*self <- struct{}{}
+func (self ChanLock) lock() {
+	self <- struct{}{}
 }
 
-func (self *ChanLock) unlock() {
-	<- *self
+func (self ChanLock) unlock() {
+	<- self
 }
 
-func (self *ChanLock) tryLock() bool {
+func (self ChanLock) tryLock() bool {
 	select {
-	case *self <- struct{}{} :
+	case self <- struct{}{} :
 		return true
 	default:
 		return false
 	}
 }
 
-func (self *ChanLock) timeoutLock(d time.Duration) bool {
+func (self ChanLock) timeoutLock(d time.Duration) bool {
 	select {
-	case *self <- struct{}{} :
+	case self <- struct{}{} :
 		return true
 	case <-time.After(d):
 		return false
