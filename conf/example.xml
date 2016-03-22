@@ -4,11 +4,11 @@
         <listen>:2465</listen>
     </server>
     <commands id="db1">
-        <command id="foo">
-            <code>echo "hello world"</code>
+        <command id="foo" runas="mysql">
+            <code>echo "hello world $(whoami)"</code>
         </command>
         <command id="grep" lang="exec">
-            <code> grep $s</code>
+            <code>grep $s</code>
         </command>
         <command id="sleep" timeout="5">
             <code> sleep 1000</code>

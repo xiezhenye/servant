@@ -45,7 +45,7 @@ type XCommand struct {
 	Lang         string	 `xml:"lang,attr"`
 	Code         string  `xml:"code"`
 	Timeout      uint32  `xml:"timeout,attr"`
-	User		 string  `xml:"runas,attr`
+	User         string  `xml:"runas,attr"`
 	Lock         XLock   `xml:"lock"`
 }
 
@@ -140,6 +140,7 @@ func (conf *XConfig) ToConfig() *Config {
 			ret.Commands[csname].Commands[cname] = &Command{}
 			ret.Commands[csname].Commands[cname].Code = strings.TrimSpace(command.Code)
 			ret.Commands[csname].Commands[cname].Lang = command.Lang
+			ret.Commands[csname].Commands[cname].User = command.User
 			if command.Timeout == 0 {
 				command.Timeout = math.MaxUint32
 			}
@@ -172,3 +173,4 @@ func (conf *XConfig) ToConfig() *Config {
 	}
 	return &ret
 }
+
