@@ -2,11 +2,14 @@ package server
 import (
 	"net/http"
 	"regexp"
+	"os/user"
 	"os/exec"
 	"servant/conf"
 	"io/ioutil"
 	"time"
 	"fmt"
+	"syscall"
+	"strconv"
 )
 
 var paramRe, _ = regexp.Compile(`^\$\w+$`)
@@ -87,6 +90,25 @@ func (self *Session) serveCommand() {
 	}
 }
 
+func setCmdUser(cmd *exec.Cmd, username string) error {
+	sysuser, err := user.Lookup(username)
+	if err != nil {
+		return err
+	}
+	uid , err := strconv.Atoi(sysuser.Uid)
+	if err != nil {
+		return err
+	}
+	gid, err := strconv.Atoi(sysuser.Gid)
+	if err != nil {
+		return err
+	}
+	cred := syscall.Credential{ Uid: uint32(uid), Gid: uint32(gid) }
+	cmd.SysProcAttr = &syscall.SysProcAttr{}
+	cmd.SysProcAttr.Credential = &cred
+	return nil
+}
+
 func (self *Session) execCommand(cmdConf *conf.Command) {
 	var cmd *exec.Cmd
 	switch cmdConf.Lang {
@@ -98,6 +120,15 @@ func (self *Session) execCommand(cmdConf *conf.Command) {
 		self.warn("command", "- unknown language")
 		self.resp.WriteHeader(http.StatusInternalServerError)
 		return
+	}
+	if cmdConf.User != "" {
+		err := setCmdUser(cmd, cmdConf.User)
+		if err != nil {
+			self.warn("command", "- %s", err.Error())
+			self.resp.Header().Set(ServantErrHeader, err.Error())
+			self.resp.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 	if self.req.Method == "POST" {
 		cmd.Stdin = self.req.Body

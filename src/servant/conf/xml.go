@@ -45,6 +45,7 @@ type XCommand struct {
 	Lang         string	 `xml:"lang,attr"`
 	Code         string  `xml:"code"`
 	Timeout      uint32  `xml:"timeout,attr"`
+	User		 string  `xml:"runas,attr`
 	Lock         XLock   `xml:"lock"`
 }
 

@@ -32,6 +32,7 @@ type Command struct {
 	Lang         string
 	Code         string
 	Timeout      uint32
+	User		 string
 	Lock         Lock
 }
 
