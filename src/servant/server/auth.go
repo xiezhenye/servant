@@ -41,7 +41,7 @@ func (self *Session) auth() (err error) {
 		if nowTs - ts > int64(maxDelta) || ts - nowTs > int64(maxDelta) {
 			return fmt.Errorf("timestamp delta too large")
 		}
-		strToHash := reqUser + user.Key + strconv.FormatInt(ts, 10) + self.req.Method + self.req.RequestURI
+		strToHash := reqUser + user.Key + strconv.Itoa(ts) + self.req.Method + self.req.RequestURI
 		sha1Sum := sha1.Sum([]byte(strToHash))
 		realHash := hex.EncodeToString(sha1Sum[:])
 		if reqHash != realHash {
