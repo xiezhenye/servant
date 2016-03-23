@@ -24,6 +24,13 @@
             <pattern>log-bin\.\d+</pattern>
         </dir>
     </files>
+
+    <database id="mysql" driver="mysql" dsn="root:@tcp(127.0.0.1:3306)/test">
+        <query id="slave_status">show slave status</query>
+        <query id="master_status">show master status</query>
+        <query id="select_1">select 1;</query>
+    </database>
+
     <user id="db_ha">
         <key>s4xuF@P0qj28fwL</key>
         <host>10.200.180.2/24</host>

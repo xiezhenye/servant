@@ -26,4 +26,7 @@ _testmain.go
 *.iml
 .idea
 
+
+github.com
+
 servant

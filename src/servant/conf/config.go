@@ -1,11 +1,12 @@
 package conf
 
 type Config struct {
-	Server   Server
-	Users    map[string]*User
-	Commands map[string]*Commands
-	Files    map[string]*Files
-	Auth     Auth
+	Server     Server
+	Users      map[string]*User
+	Commands   map[string]*Commands
+	Files      map[string]*Files
+	Databases  map[string]*Database
+	Auth       Auth
 }
 
 type Server struct {
@@ -22,6 +23,7 @@ type User struct {
 	Key       string
 	Files     []string
 	Commands  []string
+	Databases  []string
 }
 
 type Commands struct {
@@ -34,6 +36,16 @@ type Command struct {
 	Timeout      uint32
 	User		 string
 	Lock         Lock
+}
+
+type Database struct {
+	Queries  map[string]*Query
+	Driver   string
+	Dsn      string
+}
+
+type Query struct {
+	Sql string
 }
 
 type Lock struct {
