@@ -14,7 +14,7 @@ import (
 
 var paramRe, _ = regexp.Compile(`^\$\w+$`)
 var cmdUrlRe, _ = regexp.Compile(`^/commands/(\w+)/(\w+)/?$`)
-var spRe, _ = regexp.Compile(`\s+`)
+var argRe, _ = regexp.Compile(`"([^"]*)"|'([^']*)'|([^\s]+)`)
 
 func (self *Session) findCommandConfigByPath(path string) *conf.Command {
 	m := cmdUrlRe.FindStringSubmatch(path)
@@ -37,16 +37,19 @@ func getCmdBash(code string, query map[string][]string) *exec.Cmd{
 }
 
 func getCmdExec(code string, query map[string][]string) *exec.Cmd {
-	args := spRe.Split(code, -1)
-	for i := 1; i < len(args); i++ {
-		if paramRe.MatchString(args[i]) {
-			v, ok := query[args[i][1:]]
+	argsMatches := argRe.FindAllStringSubmatch(code, -1)
+	args := make([]string, 0, 8)
+	for i := 0; i < len(argsMatches); i++ {
+		arg := argsMatches[i][0]
+		if paramRe.MatchString(argsMatches[i][0]) {
+			v, ok := query[argsMatches[i][0][1:]]
 			if ok {
-				args[i] = v[0]
+				arg = v[0] // only the first arg with the name will be used
 			} else {
-				args[i] = ""
+				arg = ""
 			}
 		}
+		args = append(args, arg)
 	}
 	return exec.Command(args[0], args[1:]...)
 }
