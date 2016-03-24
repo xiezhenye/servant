@@ -52,10 +52,18 @@ func (self *Server) newCommandServer() http.HandlerFunc {
 	}
 }
 
+func (self *Server) newDatabaseServer() http.HandlerFunc {
+	return func(resp http.ResponseWriter, req *http.Request) {
+		sess := self.newSession(resp, req)
+		sess.serveSql()
+	}
+}
+
 func (self *Server) Run() {
 	mux := http.NewServeMux()
 	mux.Handle("/files/", self.newFileServer())
 	mux.Handle("/commands/", self.newCommandServer())
+	mux.Handle("/database/", self.newDatabaseServer())
 	s := &http.Server{
 		Addr:           self.config.Server.Listen,
 		Handler:        mux,

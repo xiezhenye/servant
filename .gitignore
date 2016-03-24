@@ -26,4 +26,9 @@ _testmain.go
 *.iml
 .idea
 
-servant
+*.old
+src/servant/server/sql_drivers.go
+bin
+
+github.com/
+
