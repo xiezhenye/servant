@@ -7,15 +7,15 @@ all:bin/servant
 
 mysql:
 	GOPATH=$(pwd) go get github.com/go-sql-driver/mysql 
-	grep -Eq '//mysql' $(drivers_file) || sed -ri 's/\/\/ADD_NEW/_ "github.com\/go-sql-driver\/mysql" \/\/mysql\n  \/\/ADD_NEW/' $(drivers_file)
+	grep -Eq '//mysql' $(drivers_file) || sed -i.old '/\/\/ADD_NEW/i\'$$'\n''_ "github.com\/go-sql-driver\/mysql" \/\/mysql'$$'\n' $(drivers_file)
 
 sqlite:
 	GOPATH=$(pwd) go get github.com/mattn/go-sqlite3
-	grep -Eq '//sqlite' $(drivers_file) || sed -ri 's/\/\/ADD_NEW/_ "github.com\/mattn\/go-sqlite3" \/\/sqlite\n  \/\/ADD_NEW/' $(drivers_file)
+	grep -Eq '//mysql' $(drivers_file) || sed -i.old '/\/\/ADD_NEW/i\'$$'\n''_ "github.com\/mattn\/go-sqlite3" \/\/sqlite'$$'\n' $(drivers_file)
 
 postgresql:
 	GOPATH=$(pwd) go get github.com/lib/pq
-	grep -Eq '//postgresql' $(drivers_file) || sed -ri 's/\/\/ADD_NEW/_ "github.com\/lib\/pq" \/\/postgresql\n  \/\/ADD_NEW/' $(drivers_file)
+	grep -Eq '//postgresql' $(drivers_file) || sed -i.old '/\/\/ADD_NEW/i\'$$'\n''_ "github.com\/lib\/pq" \/\/postgresql'$$'\n' $(drivers_file)
 
 bin/servant:
 	GOPATH=$(pwd) GOBIN=$(pwd)/bin go install src/servant.go
