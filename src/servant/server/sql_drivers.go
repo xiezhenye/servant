@@ -1,3 +1,7 @@
 package server
 
-import _ "github.com/go-sql-driver/mysql"
+//Auto generated, DO NOT EDIT
+
+import (
+  //ADD_NEW
+)
