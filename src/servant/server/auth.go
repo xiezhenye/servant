@@ -13,42 +13,42 @@ import (
  Authorization: user ts sha1(user + key + ts + method + uri)
 
  */
-func (self *Session) auth() (err error) {
+func (self *Session) auth() (username string, err error) {
 	defer func() {
-		// deley 1s on fail to prevent attact
+		// deley 1s on fail to prevent attack
 		if err != nil {
 			time.Sleep(1 * time.Second)
 		}
 	}()
 	if !self.config.Auth.Enabled {
-		return nil
+		return "", nil
 	}
 	authStr := self.req.Header.Get("Authorization")
 	reqUser, reqHash, ts, err := parseAuthHeader(authStr)
 	if err != nil {
-		return err
+		return "", err
 	}
 	user, ok := self.config.Users[reqUser]
 	if !ok {
-		return fmt.Errorf("user %s not found", reqUser)
+		return "", fmt.Errorf("user %s not found", reqUser)
 	}
 	if err = checkHosts(self.req.RemoteAddr, user.Hosts); err != nil {
-		return err
+		return reqUser, err
 	}
 	if user.Key != "" {
 		nowTs := time.Now().Unix()
 		maxDelta := self.config.Auth.MaxTimeDelta
 		if nowTs - ts > int64(maxDelta) || ts - nowTs > int64(maxDelta) {
-			return fmt.Errorf("timestamp delta too large")
+			return reqUser, fmt.Errorf("timestamp delta too large")
 		}
 		strToHash := reqUser + user.Key + strconv.FormatInt(ts, 10) + self.req.Method + self.req.RequestURI
 		sha1Sum := sha1.Sum([]byte(strToHash))
 		realHash := hex.EncodeToString(sha1Sum[:])
 		if reqHash != realHash {
-			return fmt.Errorf("auth failed")
+			return reqUser, fmt.Errorf("auth failed")
 		}
 	}
-	return nil
+	return reqUser, nil
 }
 
 func parseAuthHeader(authStr string) (user, hash string, ts int64, err error){
@@ -63,6 +63,15 @@ func parseAuthHeader(authStr string) (user, hash string, ts int64, err error){
 	hash = segs[2]
 	ts, err = strconv.ParseInt(tsStr, 10, 64)
 	return
+}
+
+func checkPermission(group string, allows []string) bool {
+	for _, allow := range(allows) {
+		if group == allow {
+			return true
+		}
+	}
+	return false
 }
 
 func checkHosts(remoteAddr string, hosts []string) error {
