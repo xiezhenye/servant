@@ -74,7 +74,7 @@ func (self *Server) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 	sess.username = username
-	if sess.checkPermission() {
+	if ! sess.checkPermission() {
 		sess.ErrorEnd(http.StatusForbidden, "access of %s forbidden", req.URL.Path)
 		return
 	}
