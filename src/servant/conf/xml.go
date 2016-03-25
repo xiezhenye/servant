@@ -34,6 +34,7 @@ type XUser struct {
 	Key       string           `xml:"key"`
 	Files     []XUserFiles     `xml:"files"`
 	Commands  []XUserCommands  `xml:"commands"`
+	Databases []XUserDatabases `xml:"databases"`
 }
 
 type XCommands struct {
@@ -85,6 +86,10 @@ type XUserFiles struct {
 }
 
 type XUserCommands struct {
+	Name   string   `xml:"id,attr"`
+}
+
+type XUserDatabases struct {
 	Name   string   `xml:"id,attr"`
 }
 
@@ -193,13 +198,18 @@ func (conf *XConfig) ToConfig() *Config {
 		for j := range(user.Hosts) {
 			u.Hosts[j] = strings.TrimSpace(user.Hosts[j])
 		}
+
 		u.Commands = make([]string, 0, 2)
 		u.Files = make([]string, 0, 2)
+		u.Databases = make([]string, 0, 2)
 		for _, command := range(user.Commands) {
 			u.Commands = append(u.Commands, command.Name)
 		}
 		for _, file := range(user.Files) {
 			u.Files = append(u.Files, file.Name)
+		}
+		for _, database := range(user.Databases) {
+			u.Databases = append(u.Databases, database.Name)
 		}
 		ret.Users[uname] = u
 	}

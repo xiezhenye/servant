@@ -11,7 +11,17 @@ import (
 //var paramRe, _ = regexp.Compile(`^\$\w+$`)
 var dbUrlRe, _ = regexp.Compile(`^/database/(\w+)/(\w+)/?$`)
 
-func (self *Session) findDatabaseQueryConfigByPath(path string) (*conf.Database, *conf.Query) {
+type DatabaseServer struct {
+	*Session
+}
+
+func NewDatabaseServer(sess *Session) Handler {
+	return &DatabaseServer{
+		Session:sess,
+	}
+}
+
+func (self *DatabaseServer) findDatabaseQueryConfigByPath(path string) (*conf.Database, *conf.Query) {
 	m := dbUrlRe.FindStringSubmatch(path)
 	if len(m) != 3 {
 		return nil, nil
@@ -27,10 +37,17 @@ func (self *Session) findDatabaseQueryConfigByPath(path string) (*conf.Database,
 	return dbConf, qConf
 }
 
-func (self *Session) serveSql() {
-	defer self.req.Body.Close()
+func (self *DatabaseServer) serve() {
 	urlPath := self.req.URL.Path
 	method := self.req.Method
+	self.info("database", "+ %s %s %s", self.req.RemoteAddr, method, urlPath)
+	_, err := self.auth()
+	if err != nil {
+		self.warn("database", "- auth failed: %s", err.Error())
+		self.resp.WriteHeader(http.StatusForbidden)
+		return
+	}
+
 	if method != "GET" {
 		self.warn("database", "- not allow method: %s", method)
 		self.resp.WriteHeader(http.StatusMethodNotAllowed)
@@ -59,14 +76,14 @@ func (self *Session) serveSql() {
 
 	data, err := dbQuery(db, queryConf.Sql)
 	if err != nil {
-		self.warn("database", "- query %s failed", queryConf.Sql)
+		self.warn("database", "- query %s failed: %s", queryConf.Sql, err)
 		self.resp.Header().Set(ServantErrHeader, err.Error())
 		self.resp.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	buf, err := json.Marshal(data)
 	if err != nil {
-		self.warn("database", "- json marshal failed")
+		self.warn("database", "- json marshal failed: %s", err)
 		self.resp.Header().Set(ServantErrHeader, err.Error())
 		self.resp.WriteHeader(http.StatusInternalServerError)
 		return

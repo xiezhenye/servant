@@ -16,7 +16,17 @@ var paramRe, _ = regexp.Compile(`^\$\w+$`)
 var cmdUrlRe, _ = regexp.Compile(`^/commands/(\w+)/(\w+)/?$`)
 var argRe, _ = regexp.Compile(`"([^"]*)"|'([^']*)'|([^\s]+)`)
 
-func (self *Session) findCommandConfigByPath(path string) *conf.Command {
+type CommandServer struct {
+	*Session
+}
+
+func NewCommandServer(sess *Session) Handler {
+	return &CommandServer{
+		Session:sess,
+	}
+}
+
+func (self *CommandServer) findCommandConfigByPath(path string) *conf.Command {
 	m := cmdUrlRe.FindStringSubmatch(path)
 	if len(m) != 3 {
 		return nil
@@ -29,6 +39,7 @@ func (self *Session) findCommandConfigByPath(path string) *conf.Command {
 	if !ok {
 		return nil
 	}
+	// self.config.Users
 	return cmdConf
 }
 
@@ -54,18 +65,16 @@ func getCmdExec(code string, query map[string][]string) *exec.Cmd {
 	return exec.Command(args[0], args[1:]...)
 }
 
-func (self *Session) serveCommand() {
-	defer self.req.Body.Close()
+func (self *CommandServer) serve() {
 	urlPath := self.req.URL.Path
 	method := self.req.Method
 	self.info("command", "+ %s %s %s", self.req.RemoteAddr, method, urlPath)
-	err := self.auth()
+	_, err := self.auth()
 	if err != nil {
 		self.warn("command", "- auth failed: %s", err.Error())
 		self.resp.WriteHeader(http.StatusForbidden)
 		return
 	}
-
 	if method != "GET" && method != "POST" {
 		self.warn("command", "- not allow method: %s", method)
 		self.resp.WriteHeader(http.StatusMethodNotAllowed)
@@ -77,6 +86,7 @@ func (self *Session) serveCommand() {
 		self.resp.WriteHeader(http.StatusNotFound)
 		return
 	}
+	//if checkPermission()
 
 	if cmdConf.Lock.Name == "" {
 		self.execCommand(cmdConf)
@@ -112,7 +122,7 @@ func setCmdUser(cmd *exec.Cmd, username string) error {
 	return nil
 }
 
-func (self *Session) execCommand(cmdConf *conf.Command) {
+func (self *CommandServer) execCommand(cmdConf *conf.Command) {
 	var cmd *exec.Cmd
 	switch cmdConf.Lang {
 	case "exec":

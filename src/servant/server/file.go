@@ -17,7 +17,17 @@ import (
 
 var fileUrlRe, _ = regexp.Compile(`^/files/(\w+)/(\w+)(/.+)$`)
 
-func (self *Session) findDirConfigByPath(path string) (*conf.Dir, string) {
+type FileServer struct {
+	*Session
+}
+
+func NewFileServer(sess *Session) Handler {
+	return &FileServer{
+		Session:sess,
+	}
+}
+
+func (self *FileServer) findDirConfigByPath(path string) (*conf.Dir, string) {
 	m := fileUrlRe.FindStringSubmatch(path)
 	if len(m) != 4 {
 		return nil, ""
@@ -60,7 +70,7 @@ func checkDirAllow(dirConf *conf.Dir, relPath string, method string) error {
 	return nil
 }
 
-func (self *Session) openFileError(err error, method, filePath  string) {
+func (self *FileServer) openFileError(err error, method, filePath  string) {
 	e := ""
 	if err != nil {
 		e = err.Error()
@@ -70,7 +80,7 @@ func (self *Session) openFileError(err error, method, filePath  string) {
 	self.resp.WriteHeader(http.StatusInternalServerError)
 }
 
-func (self *Session) serveGetFile(filePath string) error {
+func (self *FileServer) serveGetFile(filePath string) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		self.openFileError(err, "GET", filePath)
@@ -103,7 +113,7 @@ func (self *Session) serveGetFile(filePath string) error {
 	return err
 }
 
-func (self *Session) serveHeadFile(filePath string) error {
+func (self *FileServer) serveHeadFile(filePath string) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		self.openFileError(err, "HEAD", filePath)
@@ -122,7 +132,7 @@ func (self *Session) serveHeadFile(filePath string) error {
 	return nil
 }
 
-func (self *Session) servePostFile(filePath string) error {
+func (self *FileServer) servePostFile(filePath string) error {
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0664)
 	if err != nil {
 		self.openFileError(err, "POST", filePath)
@@ -133,7 +143,7 @@ func (self *Session) servePostFile(filePath string) error {
 	return err
 }
 
-func (self *Session) servePutFile(filePath string) error {
+func (self *FileServer) servePutFile(filePath string) error {
 	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_TRUNC, 0664)
 	if err != nil {
 		self.openFileError(err, "PUT", filePath)
@@ -144,7 +154,7 @@ func (self *Session) servePutFile(filePath string) error {
 	return err
 }
 
-func (self *Session) serveDeleteFile(filePath string) error {
+func (self *FileServer) serveDeleteFile(filePath string) error {
 	err := os.Remove(filePath)
 	if err != nil {
 		self.warn("file", "- delete file %s failed", filePath)
@@ -155,13 +165,12 @@ func (self *Session) serveDeleteFile(filePath string) error {
 	return nil
 }
 
-func (self *Session) serveFile() {
-	defer self.req.Body.Close()
+func (self *FileServer) serve() {
 	method := self.req.Method
 	urlPath := self.req.URL.Path
 	self.info("file", "+ %s %s %s", self.req.RemoteAddr, method, urlPath)
 	var err error
-	if err = self.auth(); err != nil {
+	if _, err = self.auth(); err != nil {
 		self.warn("file", "- auth failed: %s", err.Error())
 		self.resp.WriteHeader(http.StatusForbidden)
 		return
