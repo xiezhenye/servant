@@ -7,13 +7,11 @@ import (
 	"servant/conf"
 	"io/ioutil"
 	"time"
-	"fmt"
 	"syscall"
 	"strconv"
 )
 
 var paramRe, _ = regexp.Compile(`^\$\w+$`)
-var cmdUrlRe, _ = regexp.Compile(`^/commands/(\w+)/(\w+)/?$`)
 var argRe, _ = regexp.Compile(`"([^"]*)"|'([^']*)'|([^\s]+)`)
 
 type CommandServer struct {
@@ -27,19 +25,14 @@ func NewCommandServer(sess *Session) Handler {
 }
 
 func (self *CommandServer) findCommandConfigByPath(path string) *conf.Command {
-	m := cmdUrlRe.FindStringSubmatch(path)
-	if len(m) != 3 {
-		return nil
-	}
-	cmdsConf, ok := self.config.Commands[m[1]]
+	cmdsConf, ok := self.config.Commands[self.group]
 	if !ok {
 		return nil
 	}
-	cmdConf, ok := cmdsConf.Commands[m[2]]
+	cmdConf, ok := cmdsConf.Commands[self.item]
 	if !ok {
 		return nil
 	}
-	// self.config.Users
 	return cmdConf
 }
 
@@ -68,26 +61,17 @@ func getCmdExec(code string, query map[string][]string) *exec.Cmd {
 func (self *CommandServer) serve() {
 	urlPath := self.req.URL.Path
 	method := self.req.Method
-	self.info("command", "+ %s %s %s", self.req.RemoteAddr, method, urlPath)
-	_, err := self.auth()
-	if err != nil {
-		self.warn("command", "- auth failed: %s", err.Error())
-		self.resp.WriteHeader(http.StatusForbidden)
-		return
-	}
+
 	if method != "GET" && method != "POST" {
-		self.warn("command", "- not allow method: %s", method)
-		self.resp.WriteHeader(http.StatusMethodNotAllowed)
+		self.ErrorEnd(http.StatusMethodNotAllowed, "not allow method: %s", method)
 		return
 	}
 	cmdConf := self.findCommandConfigByPath(urlPath)
 	if cmdConf == nil {
-		self.warn("command", "- command %s not found", urlPath)
+		self.ErrorEnd(http.StatusNotFound, "command %s not found", urlPath)
 		self.resp.WriteHeader(http.StatusNotFound)
 		return
 	}
-	//if checkPermission()
-
 	if cmdConf.Lock.Name == "" {
 		self.execCommand(cmdConf)
 	} else {
@@ -130,16 +114,13 @@ func (self *CommandServer) execCommand(cmdConf *conf.Command) {
 	case "bash", "":
 		cmd = getCmdBash(cmdConf.Code, self.req.URL.Query())
 	default:
-		self.warn("command", "- unknown language")
-		self.resp.WriteHeader(http.StatusInternalServerError)
+		self.ErrorEnd(http.StatusInternalServerError, "unknown language")
 		return
 	}
 	if cmdConf.User != "" {
 		err := setCmdUser(cmd, cmdConf.User)
 		if err != nil {
-			self.warn("command", "- %s", err.Error())
-			self.resp.Header().Set(ServantErrHeader, err.Error())
-			self.resp.WriteHeader(http.StatusInternalServerError)
+			self.ErrorEnd(http.StatusInternalServerError, "set user failed: %s", err.Error())
 			return
 		}
 	}
@@ -152,9 +133,7 @@ func (self *CommandServer) execCommand(cmdConf *conf.Command) {
 	out, err := cmd.StdoutPipe()
 	defer out.Close()
 	if err != nil {
-		self.warn("command", "- %s", err.Error())
-		self.resp.Header().Set(ServantErrHeader, err.Error())
-		self.resp.WriteHeader(http.StatusInternalServerError)
+		self.ErrorEnd(http.StatusInternalServerError, err.Error())
 		return
 	}
 	var outBuf []byte
@@ -181,23 +160,18 @@ func (self *CommandServer) execCommand(cmdConf *conf.Command) {
 	select {
 	case err = <-ch:
 		if err != nil {
-			self.warn("command", "- execution error: %s", err.Error())
-			self.resp.Header().Set(ServantErrHeader, err.Error())
-			self.resp.WriteHeader(http.StatusBadGateway)
+			self.ErrorEnd(http.StatusBadGateway, "execution error: %s", err)
 			return
 		}
 	case <-time.After(timeout * time.Second):
 		cmd.Process.Kill()
-		err = fmt.Errorf("command execution timeout: %d", timeout)
-		self.warn("command", "- %s", err.Error())
-		self.resp.Header().Set(ServantErrHeader, err.Error())
-		self.resp.WriteHeader(http.StatusGatewayTimeout)
+		self.ErrorEnd(http.StatusGatewayTimeout, "command execution timeout: %d", timeout)
 		return
 	}
 	_, err = self.resp.Write(outBuf) // may log errors
 	if err != nil {
-		self.warn("command", "- io error: %s", err.Error())
+		self.BadEnd("io error: %s", err)
 	} else {
-		self.info("command", "- execution done")
+		self.GoodEnd("execution done")
 	}
 }

@@ -5,17 +5,13 @@ import (
 	"regexp"
 	"servant/conf"
 	"path"
-	//"fmt"
 	"strings"
 	"os"
 	"io"
 	"fmt"
-//	"time"
 	"errors"
 	"strconv"
 )
-
-var fileUrlRe, _ = regexp.Compile(`^/files/(\w+)/(\w+)(/.+)$`)
 
 type FileServer struct {
 	*Session
@@ -28,19 +24,15 @@ func NewFileServer(sess *Session) Handler {
 }
 
 func (self *FileServer) findDirConfigByPath(path string) (*conf.Dir, string) {
-	m := fileUrlRe.FindStringSubmatch(path)
-	if len(m) != 4 {
-		return nil, ""
-	}
-	filesConf, ok := self.config.Files[m[1]]
+	filesConf, ok := self.config.Files[self.group]
 	if !ok {
 		return nil, ""
 	}
-	dirConf, ok := filesConf.Dirs[m[2]]
+	dirConf, ok := filesConf.Dirs[self.item]
 	if !ok {
 		return nil, ""
 	}
-	return dirConf, m[3]
+	return dirConf, self.tail
 }
 
 func checkDirAllow(dirConf *conf.Dir, relPath string, method string) error {
@@ -75,9 +67,7 @@ func (self *FileServer) openFileError(err error, method, filePath  string) {
 	if err != nil {
 		e = err.Error()
 	}
-	self.warn("file", "- open file %s for %s failed: %s", filePath, method, e)
-	self.resp.Header().Set(ServantErrHeader, err.Error())
-	self.resp.WriteHeader(http.StatusInternalServerError)
+	self.ErrorEnd(http.StatusInternalServerError, "open file %s for %s failed: %s", filePath, method, e)
 }
 
 func (self *FileServer) serveGetFile(filePath string) error {
@@ -95,9 +85,7 @@ func (self *FileServer) serveGetFile(filePath string) error {
 	rangeStr := self.req.Header.Get("Range")
 	ranges, err := parseRange(rangeStr, info.Size())
 	if err != nil || len(ranges) > 1 {
-		self.warn("file", "- bad range format or too many ranges(%s)", rangeStr)
-		self.resp.Header().Set(ServantErrHeader, err.Error())
-		self.resp.WriteHeader(http.StatusBadRequest)
+		self.ErrorEnd(http.StatusBadRequest, "bad range format or too many ranges(%s)", rangeStr)
 		return err
 	}
 	length := info.Size()
@@ -157,9 +145,7 @@ func (self *FileServer) servePutFile(filePath string) error {
 func (self *FileServer) serveDeleteFile(filePath string) error {
 	err := os.Remove(filePath)
 	if err != nil {
-		self.warn("file", "- delete file %s failed", filePath)
-		self.resp.Header().Set(ServantErrHeader, err.Error())
-		self.resp.WriteHeader(http.StatusInternalServerError)
+		self.ErrorEnd(http.StatusInternalServerError, "delete file %s failed", filePath)
 		return err
 	}
 	return nil
@@ -168,28 +154,20 @@ func (self *FileServer) serveDeleteFile(filePath string) error {
 func (self *FileServer) serve() {
 	method := self.req.Method
 	urlPath := self.req.URL.Path
-	self.info("file", "+ %s %s %s", self.req.RemoteAddr, method, urlPath)
-	var err error
-	if _, err = self.auth(); err != nil {
-		self.warn("file", "- auth failed: %s", err.Error())
-		self.resp.WriteHeader(http.StatusForbidden)
-		return
-	}
+
 	dirConf, relPath := self.findDirConfigByPath(urlPath)
 	if dirConf == nil {
-		self.warn("file", "- dir of %s not found", urlPath)
-		self.resp.WriteHeader(http.StatusNotFound)
+		self.ErrorEnd(http.StatusNotFound, "dir of %s not found", urlPath)
 		return
 	}
-	if err = checkDirAllow(dirConf, relPath, method); err != nil {
-		self.warn("file", "- %s", err.Error())
-		self.resp.WriteHeader(http.StatusForbidden)
+	err := checkDirAllow(dirConf, relPath, method)
+	if err != nil {
+		self.ErrorEnd(http.StatusForbidden, err.Error())
 		return
 	}
 	filePath := path.Clean(dirConf.Root + relPath)
 	if ! strings.HasPrefix(filePath, path.Clean(dirConf.Root) + "/") {
-		self.warn("file", "- attempt to %s out of root: %s", method, relPath)
-		self.resp.WriteHeader(http.StatusForbidden)
+		self.ErrorEnd(http.StatusForbidden, "attempt to %s out of root: %s", method, relPath)
 		return
 	}
 	switch method {
@@ -205,9 +183,9 @@ func (self *FileServer) serve() {
 		err = self.servePutFile(filePath)
 	}
 	if err != nil {
-		self.warn("file", "- io error: %s", err.Error())
+		self.BadEnd("io error: %s", err)
 	} else {
-		self.info("file", "- %s done", method)
+		self.GoodEnd("%s done", method)
 	}
 }
 
@@ -225,10 +203,11 @@ func parseRange(s string, size int64) ([]httpRange, error) {
 		return nil, nil // header not present
 	}
 	const b = "bytes="
+	var badRange = errors.New("invalid range")
 	if !strings.HasPrefix(s, b) {
-		return nil, errors.New("invalid range")
+		return nil, badRange
 	}
-	var ranges []httpRange
+	var ranges []httpRange	
 	for _, ra := range strings.Split(s[len(b):], ",") {
 		ra = strings.TrimSpace(ra)
 		if ra == "" {
@@ -236,7 +215,7 @@ func parseRange(s string, size int64) ([]httpRange, error) {
 		}
 		i := strings.Index(ra, "-")
 		if i < 0 {
-			return nil, errors.New("invalid range")
+			return nil, badRange
 		}
 		start, end := strings.TrimSpace(ra[:i]), strings.TrimSpace(ra[i+1:])
 		var r httpRange
@@ -245,7 +224,7 @@ func parseRange(s string, size int64) ([]httpRange, error) {
 			// range start relative to the end of the file.
 			i, err := strconv.ParseInt(end, 10, 64)
 			if err != nil {
-				return nil, errors.New("invalid range")
+				return nil, badRange
 			}
 			if i > size {
 				i = size
@@ -255,7 +234,7 @@ func parseRange(s string, size int64) ([]httpRange, error) {
 		} else {
 			i, err := strconv.ParseInt(start, 10, 64)
 			if err != nil || i >= size || i < 0 {
-				return nil, errors.New("invalid range")
+				return nil, badRange
 			}
 			r.start = i
 			if end == "" {
@@ -264,7 +243,7 @@ func parseRange(s string, size int64) ([]httpRange, error) {
 			} else {
 				i, err := strconv.ParseInt(end, 10, 64)
 				if err != nil || r.start > i {
-					return nil, errors.New("invalid range")
+					return nil, badRange
 				}
 				if i >= size {
 					i = size - 1

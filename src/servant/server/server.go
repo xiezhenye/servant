@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 	"regexp"
+	"fmt"
 )
 
 const ServantErrHeader = "X-Servant-Err"
@@ -20,6 +21,7 @@ type Session struct {
 	id       uint64
 	config   *conf.Config
 	resource, group, item, tail string
+	username string
 	resp     http.ResponseWriter
 	req      *http.Request
 }
@@ -65,8 +67,20 @@ func parseUriPath(path string) (resource, group, item, tail string) {
 func (self *Server) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	sess := self.newSession(resp, req)
+	sess.info(sess.resource, "+ %s %s %s", req.RemoteAddr, req.Method, req.URL.Path)
+	username, err := sess.auth()
+	if err != nil {
+		sess.ErrorEnd(http.StatusForbidden, "auth failed: %s", err)
+		return
+	}
+	sess.username = username
+	if sess.checkPermission() {
+		sess.ErrorEnd(http.StatusForbidden, "access of %s forbidden", req.URL.Path)
+		return
+	}
 	handlerFactory, ok := self.resources[sess.resource]
 	if !ok {
+		sess.ErrorEnd(http.StatusNotFound, "unknown resource")
 		return
 	}
 	handlerFactory(sess).serve()
@@ -77,6 +91,27 @@ type Handler interface {
 }
 
 type HandlerFactory func(sess *Session) Handler
+
+
+func (self *Session) ErrorEnd(code int, format string, v ...interface{}) {
+	msg := fmt.Sprintf(format, v...)
+	self.warn(self.resource, "- " + msg)
+	self.resp.Header().Set(ServantErrHeader, msg)
+	self.resp.WriteHeader(code)
+}
+
+func (self *Session) BadEnd(format string, v ...interface{}) {
+	self.warn(self.resource, "- " + format, v...)
+}
+
+func (self *Session) GoodEnd(format string, v ...interface{}) {
+	self.info(self.resource, "- " + format, v...)
+}
+
+func (self *Session) UserConfig() *conf.User {
+	ret, _ := self.config.Users[self.username]
+	return ret
+}
 
 func (self *Server) Run() {
 	s := &http.Server{

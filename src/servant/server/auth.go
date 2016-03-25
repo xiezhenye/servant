@@ -74,6 +74,14 @@ func checkPermission(group string, allows []string) bool {
 	return false
 }
 
+
+func (self *Session) checkPermission() bool {
+	if self.username == "" {
+		return true
+	}
+	return checkPermission(self.group, self.UserConfig().Allows[self.resource])
+}
+
 func checkHosts(remoteAddr string, hosts []string) error {
 	if len(hosts) <= 0 {
 		return nil

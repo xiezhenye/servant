@@ -198,18 +198,18 @@ func (conf *XConfig) ToConfig() *Config {
 		for j := range(user.Hosts) {
 			u.Hosts[j] = strings.TrimSpace(user.Hosts[j])
 		}
-
-		u.Commands = make([]string, 0, 2)
-		u.Files = make([]string, 0, 2)
-		u.Databases = make([]string, 0, 2)
+		u.Allows = make(map[string][]string)
+		u.Allows["commands"] = make([]string, 0, 2)
+		u.Allows["files"] = make([]string, 0, 2)
+		u.Allows["databases"] = make([]string, 0, 2)
 		for _, command := range(user.Commands) {
-			u.Commands = append(u.Commands, command.Name)
+			u.Allows["commands"] = append(u.Allows["commands"], command.Name)
 		}
 		for _, file := range(user.Files) {
-			u.Files = append(u.Files, file.Name)
+			u.Allows["files"] = append(u.Allows["files"], file.Name)
 		}
 		for _, database := range(user.Databases) {
-			u.Databases = append(u.Databases, database.Name)
+			u.Allows["databases"] = append(u.Allows["databases"], database.Name)
 		}
 		ret.Users[uname] = u
 	}

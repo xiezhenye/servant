@@ -2,14 +2,12 @@ package server
 
 import (
 	"database/sql"
-	"regexp"
 	"servant/conf"
 	"net/http"
 	"encoding/json"
 )
 
 //var paramRe, _ = regexp.Compile(`^\$\w+$`)
-var dbUrlRe, _ = regexp.Compile(`^/database/(\w+)/(\w+)/?$`)
 
 type DatabaseServer struct {
 	*Session
@@ -22,15 +20,11 @@ func NewDatabaseServer(sess *Session) Handler {
 }
 
 func (self *DatabaseServer) findDatabaseQueryConfigByPath(path string) (*conf.Database, *conf.Query) {
-	m := dbUrlRe.FindStringSubmatch(path)
-	if len(m) != 3 {
-		return nil, nil
-	}
-	dbConf, ok := self.config.Databases[m[1]]
+	dbConf, ok := self.config.Databases[self.group]
 	if !ok {
 		return nil, nil
 	}
-	qConf, ok := dbConf.Queries[m[2]]
+	qConf, ok := dbConf.Queries[self.item]
 	if !ok {
 		return dbConf, nil
 	}
@@ -40,23 +34,14 @@ func (self *DatabaseServer) findDatabaseQueryConfigByPath(path string) (*conf.Da
 func (self *DatabaseServer) serve() {
 	urlPath := self.req.URL.Path
 	method := self.req.Method
-	self.info("database", "+ %s %s %s", self.req.RemoteAddr, method, urlPath)
-	_, err := self.auth()
-	if err != nil {
-		self.warn("database", "- auth failed: %s", err.Error())
-		self.resp.WriteHeader(http.StatusForbidden)
-		return
-	}
 
 	if method != "GET" {
-		self.warn("database", "- not allow method: %s", method)
-		self.resp.WriteHeader(http.StatusMethodNotAllowed)
+		self.ErrorEnd(http.StatusMethodNotAllowed, "not allow method: %s", method)
 		return
 	}
 	dbConf, queryConf := self.findDatabaseQueryConfigByPath(urlPath)
 	if dbConf == nil {
-		self.warn("database", "- database %s not found", urlPath)
-		self.resp.WriteHeader(http.StatusNotFound)
+		self.ErrorEnd(http.StatusNotFound, "database %s not found", urlPath)
 		return
 	}
 	if queryConf == nil {

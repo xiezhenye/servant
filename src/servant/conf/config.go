@@ -9,6 +9,7 @@ type Config struct {
 	Auth       Auth
 }
 
+
 type Server struct {
 	Listen string
 }
@@ -21,9 +22,7 @@ type Auth struct {
 type User struct {
 	Hosts     []string
 	Key       string
-	Files     []string
-	Commands  []string
-	Databases  []string
+	Allows    map[string] []string
 }
 
 type Commands struct {
