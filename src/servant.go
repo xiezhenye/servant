@@ -26,7 +26,7 @@ func main() {
 	for _, confPath := range(configs) {
 		xconf, err := conf.XConfigFromFile(confPath)
 		if err != nil {
-			fmt.Printf("read config error: %s\n", err)
+			fmt.Printf("read config file '%s' failed: %s\n", confPath, err)
 			return
 		}
 		xconf.IntoConfig(&config)
