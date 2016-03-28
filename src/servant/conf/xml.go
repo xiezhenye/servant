@@ -141,17 +141,17 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 		ret.Files[fname] = &Files{
 			Dirs: make(map[string]*Dir),
 		}
-		for _, dir := range(file.Dirs) {
-			dname := dir.Name
+		for _, xdir := range(file.Dirs) {
+			dname := xdir.Name
 			dir := &Dir{
-				Root: path.Clean(strings.TrimSpace(dir.Root)),
+				Root: path.Clean(strings.TrimSpace(xdir.Root)),
 				Allows: make([]string, 0, 4),
 				Patterns: make([]string, 0, 4),
 			}
-			for _, method := range(dir.Allows) {
+			for _, method := range(xdir.Allows) {
 				dir.Allows = append(dir.Allows, strings.ToUpper(strings.TrimSpace(method)))
 			}
-			for _, pattern := range(dir.Patterns) {
+			for _, pattern := range(xdir.Patterns) {
 				dir.Patterns = append(dir.Patterns, strings.TrimSpace(pattern))
 			}
 			ret.Files[fname].Dirs[dname] = dir
