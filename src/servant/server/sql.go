@@ -2,44 +2,44 @@ package server
 
 import (
 	"database/sql"
-	"regexp"
 	"servant/conf"
 	"net/http"
 	"encoding/json"
 )
 
-//var paramRe, _ = regexp.Compile(`^\$\w+$`)
-var dbUrlRe, _ = regexp.Compile(`^/database/(\w+)/(\w+)/?$`)
+type DatabaseServer struct {
+	*Session
+}
 
-func (self *Session) findDatabaseQueryConfigByPath(path string) (*conf.Database, *conf.Query) {
-	m := dbUrlRe.FindStringSubmatch(path)
-	if len(m) != 3 {
-		return nil, nil
+func NewDatabaseServer(sess *Session) Handler {
+	return &DatabaseServer{
+		Session:sess,
 	}
-	dbConf, ok := self.config.Databases[m[1]]
+}
+
+func (self *DatabaseServer) findDatabaseQueryConfigByPath(path string) (*conf.Database, *conf.Query) {
+	dbConf, ok := self.config.Databases[self.group]
 	if !ok {
 		return nil, nil
 	}
-	qConf, ok := dbConf.Queries[m[2]]
+	qConf, ok := dbConf.Queries[self.item]
 	if !ok {
 		return dbConf, nil
 	}
 	return dbConf, qConf
 }
 
-func (self *Session) serveSql() {
-	defer self.req.Body.Close()
+func (self *DatabaseServer) serve() {
 	urlPath := self.req.URL.Path
 	method := self.req.Method
+
 	if method != "GET" {
-		self.warn("database", "- not allow method: %s", method)
-		self.resp.WriteHeader(http.StatusMethodNotAllowed)
+		self.ErrorEnd(http.StatusMethodNotAllowed, "not allow method: %s", method)
 		return
 	}
 	dbConf, queryConf := self.findDatabaseQueryConfigByPath(urlPath)
 	if dbConf == nil {
-		self.warn("database", "- database %s not found", urlPath)
-		self.resp.WriteHeader(http.StatusNotFound)
+		self.ErrorEnd(http.StatusNotFound, "database %s not found", urlPath)
 		return
 	}
 	if queryConf == nil {
@@ -56,17 +56,18 @@ func (self *Session) serveSql() {
 		return
 	}
 	defer db.Close()
+	sql, params := replaceSqlParams(queryConf.Sql, self.req.URL.Query())
 
-	data, err := dbQuery(db, queryConf.Sql)
+	data, err := dbQuery(db, sql, params)
 	if err != nil {
-		self.warn("database", "- query %s failed", queryConf.Sql)
+		self.warn("database", "- query %s failed: %s", queryConf.Sql, err)
 		self.resp.Header().Set(ServantErrHeader, err.Error())
 		self.resp.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	buf, err := json.Marshal(data)
 	if err != nil {
-		self.warn("database", "- json marshal failed")
+		self.warn("database", "- json marshal failed: %s", err)
 		self.resp.Header().Set(ServantErrHeader, err.Error())
 		self.resp.WriteHeader(http.StatusInternalServerError)
 		return
@@ -74,8 +75,21 @@ func (self *Session) serveSql() {
 	self.resp.Write(buf)
 }
 
-func dbQuery(db *sql.DB, sql string) ([]map[string]string, error) {
-	rows, err := db.Query(sql)
+func replaceSqlParams(inSql string, query map[string][]string) (outSql string, params []interface{}){
+	params = make([]interface{}, 0, 4)
+	return paramRe.ReplaceAllStringFunc(inSql, func(s string) string {
+		v, ok := query[s[2:len(s) - 1]]
+		if ok {
+			params = append(params, v[0])
+ 		} else {
+			params = append(params, "")
+		}
+		return "?"
+	}), params
+}
+
+func dbQuery(db *sql.DB, sql string, params []interface{}) ([]map[string]string, error) {
+	rows, err := db.Query(sql, params...)
 	if err != nil {
 		return nil, err
 	}

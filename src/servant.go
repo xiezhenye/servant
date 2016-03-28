@@ -7,13 +7,29 @@ import (
 	"flag"
 )
 
+type arrayFlags []string
+
+func (self *arrayFlags) String() string {
+	return fmt.Sprintf("%v", *self)
+}
+
+func (self *arrayFlags) Set(value string) error {
+	*self = append(*self, value)
+	return nil
+}
+
 func main() {
-	confPath := flag.String("conf", "conf/servant.xml", "config file path")
+	var configs arrayFlags
+	flag.Var(&configs, "conf", "config files path")
 	flag.Parse()
-	xconf, err := conf.XConfigFromFile(*confPath)
-	if err != nil {
-		fmt.Printf("read config error: %s\n", err)
-		return
+	config := conf.Config{}
+	for _, confPath := range(configs) {
+		xconf, err := conf.XConfigFromFile(confPath)
+		if err != nil {
+			fmt.Printf("read config file '%s' failed: %s\n", confPath, err)
+			return
+		}
+		xconf.IntoConfig(&config)
 	}
-	server.NewServer(xconf.ToConfig()).Run()
+	server.NewServer(&config).Run()
 }

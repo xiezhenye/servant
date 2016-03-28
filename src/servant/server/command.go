@@ -7,25 +7,28 @@ import (
 	"servant/conf"
 	"io/ioutil"
 	"time"
-	"fmt"
 	"syscall"
 	"strconv"
 )
 
-var paramRe, _ = regexp.Compile(`^\$\w+$`)
-var cmdUrlRe, _ = regexp.Compile(`^/commands/(\w+)/(\w+)/?$`)
-var argRe, _ = regexp.Compile(`"([^"]*)"|'([^']*)'|([^\s]+)`)
+var argRe, _ = regexp.Compile(`("[^"]*"|'[^']*'|[^\s]+)`)
 
-func (self *Session) findCommandConfigByPath(path string) *conf.Command {
-	m := cmdUrlRe.FindStringSubmatch(path)
-	if len(m) != 3 {
-		return nil
+type CommandServer struct {
+	*Session
+}
+
+func NewCommandServer(sess *Session) Handler {
+	return &CommandServer{
+		Session:sess,
 	}
-	cmdsConf, ok := self.config.Commands[m[1]]
+}
+
+func (self *CommandServer) findCommandConfigByPath(path string) *conf.Command {
+	cmdsConf, ok := self.config.Commands[self.group]
 	if !ok {
 		return nil
 	}
-	cmdConf, ok := cmdsConf.Commands[m[2]]
+	cmdConf, ok := cmdsConf.Commands[self.item]
 	if !ok {
 		return nil
 	}
@@ -36,48 +39,44 @@ func getCmdBash(code string, query map[string][]string) *exec.Cmd{
 	return exec.Command("bash", "-c", code)
 }
 
+func replaceCmdParams(arg string, query map[string][]string) string {
+	return paramRe.ReplaceAllStringFunc(arg, func(s string) string {
+		v, ok := query[s[2:len(s) - 1]]
+		if ok {
+			return v[0] // only the first arg with the name will be used
+		}
+		return ""
+	})
+}
+
 func getCmdExec(code string, query map[string][]string) *exec.Cmd {
 	argsMatches := argRe.FindAllStringSubmatch(code, -1)
 	args := make([]string, 0, 8)
 	for i := 0; i < len(argsMatches); i++ {
-		arg := argsMatches[i][0]
-		if paramRe.MatchString(argsMatches[i][0]) {
-			v, ok := query[argsMatches[i][0][1:]]
-			if ok {
-				arg = v[0] // only the first arg with the name will be used
-			} else {
-				arg = ""
-			}
+		arg := argsMatches[i][1]
+		if arg[0] == '\'' || arg[0] == '"' {
+			arg = arg[1 : len(arg)-1]
 		}
+		arg = replaceCmdParams(arg, query)
 		args = append(args, arg)
 	}
 	return exec.Command(args[0], args[1:]...)
 }
 
-func (self *Session) serveCommand() {
-	defer self.req.Body.Close()
+func (self *CommandServer) serve() {
 	urlPath := self.req.URL.Path
 	method := self.req.Method
-	self.info("command", "+ %s %s %s", self.req.RemoteAddr, method, urlPath)
-	err := self.auth()
-	if err != nil {
-		self.warn("command", "- auth failed: %s", err.Error())
-		self.resp.WriteHeader(http.StatusForbidden)
-		return
-	}
 
 	if method != "GET" && method != "POST" {
-		self.warn("command", "- not allow method: %s", method)
-		self.resp.WriteHeader(http.StatusMethodNotAllowed)
+		self.ErrorEnd(http.StatusMethodNotAllowed, "not allow method: %s", method)
 		return
 	}
 	cmdConf := self.findCommandConfigByPath(urlPath)
 	if cmdConf == nil {
-		self.warn("command", "- command %s not found", urlPath)
+		self.ErrorEnd(http.StatusNotFound, "command %s not found", urlPath)
 		self.resp.WriteHeader(http.StatusNotFound)
 		return
 	}
-
 	if cmdConf.Lock.Name == "" {
 		self.execCommand(cmdConf)
 	} else {
@@ -112,7 +111,7 @@ func setCmdUser(cmd *exec.Cmd, username string) error {
 	return nil
 }
 
-func (self *Session) execCommand(cmdConf *conf.Command) {
+func (self *CommandServer) execCommand(cmdConf *conf.Command) {
 	var cmd *exec.Cmd
 	switch cmdConf.Lang {
 	case "exec":
@@ -120,16 +119,13 @@ func (self *Session) execCommand(cmdConf *conf.Command) {
 	case "bash", "":
 		cmd = getCmdBash(cmdConf.Code, self.req.URL.Query())
 	default:
-		self.warn("command", "- unknown language")
-		self.resp.WriteHeader(http.StatusInternalServerError)
+		self.ErrorEnd(http.StatusInternalServerError, "unknown language")
 		return
 	}
 	if cmdConf.User != "" {
 		err := setCmdUser(cmd, cmdConf.User)
 		if err != nil {
-			self.warn("command", "- %s", err.Error())
-			self.resp.Header().Set(ServantErrHeader, err.Error())
-			self.resp.WriteHeader(http.StatusInternalServerError)
+			self.ErrorEnd(http.StatusInternalServerError, "set user failed: %s", err.Error())
 			return
 		}
 	}
@@ -142,9 +138,7 @@ func (self *Session) execCommand(cmdConf *conf.Command) {
 	out, err := cmd.StdoutPipe()
 	defer out.Close()
 	if err != nil {
-		self.warn("command", "- %s", err.Error())
-		self.resp.Header().Set(ServantErrHeader, err.Error())
-		self.resp.WriteHeader(http.StatusInternalServerError)
+		self.ErrorEnd(http.StatusInternalServerError, err.Error())
 		return
 	}
 	var outBuf []byte
@@ -171,23 +165,18 @@ func (self *Session) execCommand(cmdConf *conf.Command) {
 	select {
 	case err = <-ch:
 		if err != nil {
-			self.warn("command", "- execution error: %s", err.Error())
-			self.resp.Header().Set(ServantErrHeader, err.Error())
-			self.resp.WriteHeader(http.StatusBadGateway)
+			self.ErrorEnd(http.StatusBadGateway, "execution error: %s", err)
 			return
 		}
 	case <-time.After(timeout * time.Second):
 		cmd.Process.Kill()
-		err = fmt.Errorf("command execution timeout: %d", timeout)
-		self.warn("command", "- %s", err.Error())
-		self.resp.Header().Set(ServantErrHeader, err.Error())
-		self.resp.WriteHeader(http.StatusGatewayTimeout)
+		self.ErrorEnd(http.StatusGatewayTimeout, "command execution timeout: %d", timeout)
 		return
 	}
 	_, err = self.resp.Write(outBuf) // may log errors
 	if err != nil {
-		self.warn("command", "- io error: %s", err.Error())
+		self.BadEnd("io error: %s", err)
 	} else {
-		self.info("command", "- execution done")
+		self.GoodEnd("execution done")
 	}
 }

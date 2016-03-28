@@ -2,16 +2,20 @@
 <config>
     <server>
         <listen>:2465</listen>
+        <auth enabled="0">
+            <maxTimeDelta>300</maxTimeDelta>
+        </auth>
     </server>
+
     <commands id="db1">
         <command id="foo" runas="mysql">
             <code>echo "hello world $(whoami)"</code>
         </command>
         <command id="grep" lang="exec">
-            <code>grep $s</code>
+            <code>grep hello</code>
         </command>
-        <command id="sleep" timeout="5">
-            <code> sleep 1000</code>
+        <command id="sleep" timeout="5" lang="exec">
+            <code> sleep ${t}</code>
         </command>
     </commands>
     <files id="db1">
@@ -20,8 +24,10 @@
             <allow>get</allow>
             <allow>head</allow>
             <allow>post</allow>
-            <allow>delete</allow><!-- put, post -->
+            <allow>delete</allow>
+            <allow>put</allow>
             <pattern>log-bin\.\d+</pattern>
+            <pattern>test.txt</pattern>
         </dir>
     </files>
 
@@ -29,6 +35,7 @@
         <query id="slave_status">show slave status</query>
         <query id="master_status">show master status</query>
         <query id="select_1">select 1;</query>
+        <query id="select_v">select ${v} v;</query>
     </database>
 
     <user id="db_ha">
@@ -37,7 +44,4 @@
         <files id="db1" />
         <commands id="db1" />
     </user>
-    <auth enabled="0">
-        <maxTimeDelta>300</maxTimeDelta>
-    </auth>
 </config>

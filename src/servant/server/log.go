@@ -8,7 +8,11 @@ var logger = log.New(os.Stdout, "", log.LstdFlags)
 
 func (self *Session) log(topic string, level string, format string, v ...interface{}) {
 	prefix := fmt.Sprintf("%s (%d) [%s] ", level, self.id, topic)
-	logger.Printf(prefix + format, v...)
+	if len(v) == 0 {
+		logger.Println(prefix + format)
+	} else {
+		logger.Printf(prefix + format, v...)
+	}
 }
 
 func (self *Session) info(topic string, format string, v ...interface{}) {

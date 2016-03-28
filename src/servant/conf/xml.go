@@ -12,7 +12,6 @@ import (
 type XConfig struct {
 	XMLName    xml.Name    `xml:"config"`
 	Server     XServer     `xml:"server"`
-	Auth       XAuth       `xml:"auth"`
 	Users      []XUser     `xml:"user"`
 	Commands   []XCommands `xml:"commands"`
 	Files      []XFiles    `xml:"files"`
@@ -20,7 +19,8 @@ type XConfig struct {
 }
 
 type XServer struct {
-	Listen string      `xml:"listen"`
+	Listen  string      `xml:"listen"`
+	Auth    XAuth       `xml:"auth"`
 }
 
 type XAuth struct {
@@ -34,6 +34,7 @@ type XUser struct {
 	Key       string           `xml:"key"`
 	Files     []XUserFiles     `xml:"files"`
 	Commands  []XUserCommands  `xml:"commands"`
+	Databases []XUserDatabases `xml:"databases"`
 }
 
 type XCommands struct {
@@ -88,6 +89,10 @@ type XUserCommands struct {
 	Name   string   `xml:"id,attr"`
 }
 
+type XUserDatabases struct {
+	Name   string   `xml:"id,attr"`
+}
+
 func XConfigFromData(data []byte) (*XConfig, error) {
 	ret := XConfig{}
 	err := xml.Unmarshal(data, &ret)
@@ -115,30 +120,38 @@ func XConfigFromFile(path string) (*XConfig, error) {
 
 func (conf *XConfig) ToConfig() *Config {
 	ret := Config{}
-	ret.Server = Server {
-		Listen: conf.Server.Listen,
+	conf.IntoConfig(&ret)
+	return &ret
+}
+
+func (conf *XConfig) IntoConfig(ret *Config) {
+	if ret.Server.Listen == "" {
+		ret.Server = Server{
+			Listen: conf.Server.Listen,
+		}
+		ret.Auth = Auth {
+			Enabled:      conf.Server.Auth.Enabled,
+			MaxTimeDelta: conf.Server.Auth.MaxTimeDelta,
+		}
 	}
-	ret.Auth = Auth {
-		Enabled:      conf.Auth.Enabled,
-		MaxTimeDelta: conf.Auth.MaxTimeDelta,
-	}
+
 	ret.Files = make(map[string]*Files)
 	for _, file := range(conf.Files) {
 		fname := file.Name
 		ret.Files[fname] = &Files{
 			Dirs: make(map[string]*Dir),
 		}
-		for _, dir := range(file.Dirs) {
-			dname := dir.Name
+		for _, xdir := range(file.Dirs) {
+			dname := xdir.Name
 			dir := &Dir{
-				Root: path.Clean(strings.TrimSpace(dir.Root)),
+				Root: path.Clean(strings.TrimSpace(xdir.Root)),
 				Allows: make([]string, 0, 4),
 				Patterns: make([]string, 0, 4),
 			}
-			for _, method := range(dir.Allows) {
+			for _, method := range(xdir.Allows) {
 				dir.Allows = append(dir.Allows, strings.ToUpper(strings.TrimSpace(method)))
 			}
-			for _, pattern := range(dir.Patterns) {
+			for _, pattern := range(xdir.Patterns) {
 				dir.Patterns = append(dir.Patterns, strings.TrimSpace(pattern))
 			}
 			ret.Files[fname].Dirs[dname] = dir
@@ -193,16 +206,20 @@ func (conf *XConfig) ToConfig() *Config {
 		for j := range(user.Hosts) {
 			u.Hosts[j] = strings.TrimSpace(user.Hosts[j])
 		}
-		u.Commands = make([]string, 0, 2)
-		u.Files = make([]string, 0, 2)
+		u.Allows = make(map[string][]string)
+		u.Allows["commands"] = make([]string, 0, 2)
+		u.Allows["files"] = make([]string, 0, 2)
+		u.Allows["databases"] = make([]string, 0, 2)
 		for _, command := range(user.Commands) {
-			u.Commands = append(u.Commands, command.Name)
+			u.Allows["commands"] = append(u.Allows["commands"], command.Name)
 		}
 		for _, file := range(user.Files) {
-			u.Files = append(u.Files, file.Name)
+			u.Allows["files"] = append(u.Allows["files"], file.Name)
+		}
+		for _, database := range(user.Databases) {
+			u.Allows["databases"] = append(u.Allows["databases"], database.Name)
 		}
 		ret.Users[uname] = u
 	}
-	return &ret
 }
 
