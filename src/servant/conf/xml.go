@@ -120,6 +120,11 @@ func XConfigFromFile(path string) (*XConfig, error) {
 
 func (conf *XConfig) ToConfig() *Config {
 	ret := Config{}
+	conf.IntoConfig(&ret)
+	return &ret
+}
+
+func (conf *XConfig) IntoConfig(ret *Config) {
 	ret.Server = Server {
 		Listen: conf.Server.Listen,
 	}
@@ -213,6 +218,5 @@ func (conf *XConfig) ToConfig() *Config {
 		}
 		ret.Users[uname] = u
 	}
-	return &ret
 }
 
