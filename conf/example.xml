@@ -2,7 +2,11 @@
 <config>
     <server>
         <listen>:2465</listen>
+        <auth enabled="0">
+            <maxTimeDelta>300</maxTimeDelta>
+        </auth>
     </server>
+
     <commands id="db1">
         <command id="foo" runas="mysql">
             <code>echo "hello world $(whoami)"</code>
@@ -38,7 +42,4 @@
         <files id="db1" />
         <commands id="db1" />
     </user>
-    <auth enabled="0">
-        <maxTimeDelta>300</maxTimeDelta>
-    </auth>
 </config>
