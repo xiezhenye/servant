@@ -64,6 +64,9 @@ func parseUriPath(path string) (resource, group, item, tail string) {
 	return
 }
 
+var paramRe, _ = regexp.Compile(`\${\w+}`)
+
+
 func (self *Server) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	sess := self.newSession(resp, req)

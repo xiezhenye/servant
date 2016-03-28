@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 )
 
-//var paramRe, _ = regexp.Compile(`^\$\w+$`)
-
 type DatabaseServer struct {
 	*Session
 }
@@ -58,8 +56,9 @@ func (self *DatabaseServer) serve() {
 		return
 	}
 	defer db.Close()
+	sql, params := replaceSqlParams(queryConf.Sql, self.req.URL.Query())
 
-	data, err := dbQuery(db, queryConf.Sql)
+	data, err := dbQuery(db, sql, params)
 	if err != nil {
 		self.warn("database", "- query %s failed: %s", queryConf.Sql, err)
 		self.resp.Header().Set(ServantErrHeader, err.Error())
@@ -76,8 +75,21 @@ func (self *DatabaseServer) serve() {
 	self.resp.Write(buf)
 }
 
-func dbQuery(db *sql.DB, sql string) ([]map[string]string, error) {
-	rows, err := db.Query(sql)
+func replaceSqlParams(inSql string, query map[string][]string) (outSql string, params []interface{}){
+	params = make([]interface{}, 0, 4)
+	return paramRe.ReplaceAllStringFunc(inSql, func(s string) string {
+		v, ok := query[s[2:len(s) - 1]]
+		if ok {
+			params = append(params, v[0])
+ 		} else {
+			params = append(params, "")
+		}
+		return "?"
+	}), params
+}
+
+func dbQuery(db *sql.DB, sql string, params []interface{}) ([]map[string]string, error) {
+	rows, err := db.Query(sql, params...)
 	if err != nil {
 		return nil, err
 	}

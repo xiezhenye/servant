@@ -8,7 +8,7 @@
             <code>echo "hello world $(whoami)"</code>
         </command>
         <command id="grep" lang="exec">
-            <code>grep $s</code>
+            <code>/usr/bin/grep "${s}"</code>
         </command>
         <command id="sleep" timeout="5">
             <code> sleep 1000</code>
@@ -29,6 +29,7 @@
         <query id="slave_status">show slave status</query>
         <query id="master_status">show master status</query>
         <query id="select_1">select 1;</query>
+        <query id="select_v">select ${v} v;</query>
     </database>
 
     <user id="db_ha">

@@ -11,8 +11,7 @@ import (
 	"strconv"
 )
 
-var paramRe, _ = regexp.Compile(`^\$\w+$`)
-var argRe, _ = regexp.Compile(`"([^"]*)"|'([^']*)'|([^\s]+)`)
+var argRe, _ = regexp.Compile(`("[^"]*"|'[^']*'|[^\s]+)`)
 
 type CommandServer struct {
 	*Session
@@ -40,19 +39,25 @@ func getCmdBash(code string, query map[string][]string) *exec.Cmd{
 	return exec.Command("bash", "-c", code)
 }
 
+func replaceCmdParams(arg string, query map[string][]string) string {
+	return paramRe.ReplaceAllStringFunc(arg, func(s string) string {
+		v, ok := query[s[2:len(s) - 1]]
+		if ok {
+			return v[0] // only the first arg with the name will be used
+		}
+		return ""
+	})
+}
+
 func getCmdExec(code string, query map[string][]string) *exec.Cmd {
 	argsMatches := argRe.FindAllStringSubmatch(code, -1)
 	args := make([]string, 0, 8)
 	for i := 0; i < len(argsMatches); i++ {
-		arg := argsMatches[i][0]
-		if paramRe.MatchString(argsMatches[i][0]) {
-			v, ok := query[argsMatches[i][0][1:]]
-			if ok {
-				arg = v[0] // only the first arg with the name will be used
-			} else {
-				arg = ""
-			}
+		arg := argsMatches[i][1]
+		if arg[0] == '\'' || arg[0] == '"' {
+			arg = arg[1 : len(arg)-1]
 		}
+		arg = replaceCmdParams(arg, query)
 		args = append(args, arg)
 	}
 	return exec.Command(args[0], args[1:]...)
