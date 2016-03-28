@@ -28,20 +28,30 @@ Servant config file is in xml, may looks like this;
             <command id="foo" runas="mysql" lang="shell">
                 <code>echo "hello world $(whoami)"</code>
             </command>
+            <command id="grep" lang="exec">
+                <code>grep hello</code>
+            </command>
+            <command id="sleep" timeout="5" lang="exec">
+                <code> sleep $t</code>
+            </command>
         </commands>
         <files id="db1">
             <dir id="binlog1">
                 <root>/data/mysql0</root>
                 <allow>get</allow>
+                <allow>head</allow>
+                <allow>post</allow>
+                <allow>delete</allow>
+                <allow>put</allow>
                 <pattern>log-bin\.\d+</pattern>
-            </dir>
+        </dir>
         </files>
 
         <database id="mysql" driver="mysql" dsn="root:@tcp(127.0.0.1:3306)/test">
             <query id="select_1">select 1;</query>
         </database>
 
-        <user id="db_ha">
+        <user id="user1">
             <key>someKey</key>
             <host>192.168.1.0/24</host>
             <files id="db1" />
@@ -145,13 +155,63 @@ id of `database` can be access. Can appearances multiple times.
 
 ## client protocol
 
+servant uses HTTP protocol. You can use `curl http://<host>:<port>/<resource_type>/<group>/<item>[/<sub item>]` to access resources., e.g. `curl http://127.0.0.1:2465/commands/db1/foo` to execute a command foo in db1 group.
+
+### commands
+
+only supports GET and POST method. 
+
+#### simple
+`curl http://127.0.0.1:2465/commands/db1/foo`
+
+#### with input stream
+`echo "hello world" | curl -XPOST http://127.0.0.1:2465/commands/db1/grep -d -`
+
+#### with parameters
+`curl http://127.0.0.1:2465/commands/db1/sleep?t=2`
+
+### files
+
+#### read a file
+`curl http://127.0.0.1:2465/files/db1/binlog1/log-bin.000001`
+
+#### read a file range
+`curl -H 'Range: bytes=6-10' http://127.0.0.1:2465/files/db1/binlog1/test.txt`
+
+#### create a file
+`echo "hello world!" | curl -XPOST http://127.0.0.1:2465/files/db1/binlog1/test.txt -d -`
+
+#### update a file
+`echo "hello world!" | curl -XPUT http://127.0.0.1:2465/files/db1/binlog1/test.txt -d -`
+
+#### delete a file
+`curl -XDELETE http://127.0.0.1:2465/files/db1/binlog1/test.txt`
+
+#### view file attributes
+`curl -I http://127.0.0.1:2465/files/db1/binlog1/test.txt`
+
+### databases
+Output are in json format
+
+`curl http://127.0.0.1:2465/databases/mysql/select_1`
+
+`curl http://127.0.0.1:2465/databases/mysql/select_v?v=hello`
 
 
+### authorization
 
+servant uses a `Authorization` head to verify a user access. 
 
+The format is `Authorization: <username> <timestamp> sha1(<username> + <key> + <timestamp> + <method> + <uri>)`.
 
+Timestamp is a 32bit UNIX timestamp; method is in uppercase.
 
+e.g.
 
-
-
-
+    uri='commands/db1/foo'
+    ts=$(date +%s)
+    user=user1
+    key=someKey
+    curl -H "Authorization: user1 ${ts} $(echo "${user1}${key}${ts}GET${uri}"|sha1sum|cut -f1 -d' ')"  "http://127.0.0.1:2465/${uri}"
+    
+    

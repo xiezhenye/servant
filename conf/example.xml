@@ -12,10 +12,10 @@
             <code>echo "hello world $(whoami)"</code>
         </command>
         <command id="grep" lang="exec">
-            <code>/usr/bin/grep "${s}"</code>
+            <code>grep hello</code>
         </command>
-        <command id="sleep" timeout="5">
-            <code> sleep 1000</code>
+        <command id="sleep" timeout="5" lang="exec">
+            <code> sleep ${t}</code>
         </command>
     </commands>
     <files id="db1">
@@ -24,8 +24,10 @@
             <allow>get</allow>
             <allow>head</allow>
             <allow>post</allow>
-            <allow>delete</allow><!-- put, post -->
+            <allow>delete</allow>
+            <allow>put</allow>
             <pattern>log-bin\.\d+</pattern>
+            <pattern>test.txt</pattern>
         </dir>
     </files>
 
