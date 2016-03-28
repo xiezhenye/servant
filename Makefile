@@ -1,26 +1,37 @@
 pwd=$(shell pwd)
 arch=$(shell echo `go env GOOS`_`go env GOARCH`)
-drivers_file="src/servant/server/sql_drivers.go"
+drivers_file=src/servant/server/sql_drivers.go
+
+.PHONY : all clean driver
 
 all:bin/servant
-.PHONY : all
 
-mysql:
-	GOPATH=$(pwd) go get github.com/go-sql-driver/mysql 
-	grep -Eq '//mysql' $(drivers_file) || sed -i.old '/\/\/ADD_NEW/i\'$$'\n''_ "github.com\/go-sql-driver\/mysql" \/\/mysql'$$'\n' $(drivers_file)
+DRIVERS="mysql"
 
-sqlite:
-	GOPATH=$(pwd) go get github.com/mattn/go-sqlite3
-	grep -Eq '//sqlite' $(drivers_file) || sed -i.old '/\/\/ADD_NEW/i\'$$'\n''_ "github.com\/mattn\/go-sqlite3" \/\/sqlite'$$'\n' $(drivers_file)
+driver:$(drivers_file)
 
-postgresql:
-	GOPATH=$(pwd) go get github.com/lib/pq
-	grep -Eq '//postgresql' $(drivers_file) || sed -i.old '/\/\/ADD_NEW/i\'$$'\n''_ "github.com\/lib\/pq" \/\/postgresql'$$'\n' $(drivers_file)
+$(drivers_file):
+	[ -e "$(drivers_file)" ] || ( echo 'package server'; \
+	echo 'import (' ; \
+	for d in $(DRIVERS); do \
+		case "$$d" in \
+		mysql) \
+			GOPATH=$(pwd) go get github.com/go-sql-driver/mysql; \
+			echo '_ "github.com/go-sql-driver/mysql"' ;; \
+		sqlite) \
+			GOPATH=$(pwd) go get github.com/mattn/go-sqlite3;  \
+			echo '_ "github.com/mattn/go-sqlite3"' ;; \
+		postgresql) \
+			GOPATH=$(pwd) go get github.com/lib/pq;  \
+			echo '_ "github.com/lib/pq"' ;; \
+		esac \
+	done ; \
+	echo ')' ) >"$(drivers_file)"
 
-bin/servant:
+bin/servant:$(drivers_file) src/servant.go
 	GOPATH=$(pwd) GOBIN=$(pwd)/bin go install src/servant.go
 
 clean:
-	rm -rf servant bin pkg/$(arch)/servant
+	rm -rf servant bin pkg/$(arch)/servant "$(drivers_file)"
 
 
