@@ -60,7 +60,7 @@ type XDatabase struct {
 
 type XQuery struct {
 	Name    string `xml:"id,attr"`
-	Sql     string `xml:",chardata"`
+	Sqls    []string `xml:"sql"`
 }
 
 type XLock struct {
@@ -193,7 +193,7 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 			Queries: make(map[string]*Query),
 		}
 		for _, query := range(database.Queries) {
-			ret.Databases[dname].Queries[query.Name] = &Query{ Sql: query.Sql }
+			ret.Databases[dname].Queries[query.Name] = &Query{ Sqls: query.Sqls }
 		}
 	}
 	ret.Users = make(map[string]*User)
