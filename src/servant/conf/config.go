@@ -44,7 +44,7 @@ type Database struct {
 }
 
 type Query struct {
-	Sql string
+	Sqls    []string
 }
 
 type Lock struct {

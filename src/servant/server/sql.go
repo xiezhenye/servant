@@ -11,6 +11,8 @@ type DatabaseServer struct {
 	*Session
 }
 
+type sqlResult []map[string]string
+
 func NewDatabaseServer(sess *Session) Handler {
 	return &DatabaseServer{
 		Session:sess,
@@ -56,14 +58,18 @@ func (self *DatabaseServer) serve() {
 		return
 	}
 	defer db.Close()
-	sql, params := replaceSqlParams(queryConf.Sql, self.req.URL.Query())
+	data := make([]sqlResult, 0, 1)
+	for _, sql := range(queryConf.Sqls) {
+		sql, params := replaceSqlParams(sql, self.req.URL.Query())
 
-	data, err := dbQuery(db, sql, params)
-	if err != nil {
-		self.warn("database", "- query %s failed: %s", queryConf.Sql, err)
-		self.resp.Header().Set(ServantErrHeader, err.Error())
-		self.resp.WriteHeader(http.StatusInternalServerError)
-		return
+		result, err := dbQuery(db, sql, params)
+		if err != nil {
+			self.warn("database", "- query %s failed: %s", sql, err)
+			self.resp.Header().Set(ServantErrHeader, err.Error())
+			self.resp.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		data = append(data, result)
 	}
 	buf, err := json.Marshal(data)
 	if err != nil {
@@ -88,7 +94,7 @@ func replaceSqlParams(inSql string, query map[string][]string) (outSql string, p
 	}), params
 }
 
-func dbQuery(db *sql.DB, sql string, params []interface{}) ([]map[string]string, error) {
+func dbQuery(db *sql.DB, sql string, params []interface{}) (sqlResult, error) {
 	rows, err := db.Query(sql, params...)
 	if err != nil {
 		return nil, err
