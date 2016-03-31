@@ -129,7 +129,11 @@ Data source name, see driver document: [mysql](https://github.com/go-sql-driver/
 
 #### `database/query`
 
-Sql to be executed. You can use `${param_name}` as a placeholder, and replace it by query parameters. 
+Sqls to be executed. Will be executed during a database session.
+
+Element `database/query/sql`:
+A sql. You can use `${param_name}` as a placeholder, and replace it by query parameters.  Can appearances multiple times.
+
 
 ### `user`
 

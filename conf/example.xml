@@ -32,10 +32,19 @@
     </files>
 
     <database id="mysql" driver="mysql" dsn="root:@tcp(127.0.0.1:3306)/test">
-        <query id="slave_status">show slave status</query>
-        <query id="master_status">show master status</query>
-        <query id="select_1">select 1;</query>
-        <query id="select_v">select ${v} v;</query>
+        <query id="slave_status">
+            <sql>show slave status</sql>
+        </query>
+        <query id="master_status">
+            <sql>show master status</sql>
+        </query>
+        <query id="select_1">
+            <sql>select 1;</sql>
+        </query>
+        <query id="select_v">
+            <sql>select ${v1} v;</sql>
+            <sql>select ${v2} v;</sql>
+        </query>
     </database>
 
     <user id="db_ha">
