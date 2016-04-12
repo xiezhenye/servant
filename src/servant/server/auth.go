@@ -32,8 +32,8 @@ func (self *Session) auth() (username string, err error) {
 	if !ok {
 		return "", fmt.Errorf("user %s not found", reqUser)
 	}
-	if err = checkHosts(self.req.RemoteAddr, user.Hosts); err != nil {
-		return reqUser, err
+	if ! checkHosts(self.req.RemoteAddr, user.Hosts) {
+		return reqUser, fmt.Errorf("remote host is denied")
 	}
 	if user.Key != "" {
 		nowTs := time.Now().Unix()
@@ -57,6 +57,7 @@ func parseAuthHeader(authStr string) (user, hash string, ts int64, err error){
 	if len(segs) < 3 {
 		hash = ""
 		ts = 0
+		err = fmt.Errorf("bad auth header")
 		return
 	}
 	tsStr := segs[1]
@@ -82,9 +83,9 @@ func (self *Session) checkPermission() bool {
 	return checkPermission(self.group, self.UserConfig().Allows[self.resource])
 }
 
-func checkHosts(remoteAddr string, hosts []string) error {
+func checkHosts(remoteAddr string, hosts []string) bool {
 	if len(hosts) <= 0 {
-		return nil
+		return true
 	}
 	ok := false
 	for _, host := range (hosts) {
@@ -98,7 +99,7 @@ func checkHosts(remoteAddr string, hosts []string) error {
 		}
 	}
 	if !ok {
-		return fmt.Errorf("remote host is denied")
+		return false
 	}
-	return nil
+	return true
 }

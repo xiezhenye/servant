@@ -23,7 +23,7 @@ func NewFileServer(sess *Session) Handler {
 	}
 }
 
-func (self *FileServer) findDirConfigByPath(path string) (*conf.Dir, string) {
+func (self *FileServer) findDirConfigByPath() (*conf.Dir, string) {
 	filesConf, ok := self.config.Files[self.group]
 	if !ok {
 		return nil, ""
@@ -155,7 +155,7 @@ func (self *FileServer) serve() {
 	method := self.req.Method
 	urlPath := self.req.URL.Path
 
-	dirConf, relPath := self.findDirConfigByPath(urlPath)
+	dirConf, relPath := self.findDirConfigByPath()
 	if dirConf == nil {
 		self.ErrorEnd(http.StatusNotFound, "dir of %s not found", urlPath)
 		return

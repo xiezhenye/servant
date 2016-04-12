@@ -2,7 +2,7 @@ pwd=$(shell pwd)
 arch=$(shell echo `go env GOOS`_`go env GOARCH`)
 drivers_file=src/servant/server/sql_drivers.go
 
-.PHONY : all clean driver tarball
+.PHONY : all clean driver tarball test
 
 all:bin/servant
 
@@ -38,6 +38,10 @@ tarball:servant.tar.gz
 	rm -rf servant
 	
 servant.tar.gz:bin/servant
+
+test:
+	GOPATH=$(pwd) go test -coverprofile=c_server.out servant/server
+	GOPATH=$(pwd) go test -coverprofile=c_conf.out servant/conf
 
 clean:
 	rm -rf servant bin pkg/$(arch)/servant "$(drivers_file)" servant.tar.gz

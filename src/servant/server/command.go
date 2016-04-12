@@ -23,7 +23,7 @@ func NewCommandServer(sess *Session) Handler {
 	}
 }
 
-func (self *CommandServer) findCommandConfigByPath(path string) *conf.Command {
+func (self *CommandServer) findCommandConfigByPath() *conf.Command {
 	cmdsConf, ok := self.config.Commands[self.group]
 	if !ok {
 		return nil
@@ -71,7 +71,7 @@ func (self *CommandServer) serve() {
 		self.ErrorEnd(http.StatusMethodNotAllowed, "not allow method: %s", method)
 		return
 	}
-	cmdConf := self.findCommandConfigByPath(urlPath)
+	cmdConf := self.findCommandConfigByPath()
 	if cmdConf == nil {
 		self.ErrorEnd(http.StatusNotFound, "command %s not found", urlPath)
 		self.resp.WriteHeader(http.StatusNotFound)
