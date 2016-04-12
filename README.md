@@ -153,7 +153,7 @@ id of `files` can be access. Can appearances multiple times.
 Attribute `id`:<br/>
 id of `commands` can be access. Can appearances multiple times.
 
-#### `user/database`
+#### `user/databases`
 Attribute `id`:<br/>
 id of `database` can be access. Can appearances multiple times.
 
@@ -212,10 +212,10 @@ Timestamp is a 32bit UNIX timestamp; method is in uppercase.
 
 e.g.
 
-    uri='commands/db1/foo'
+    uri='/commands/db1/foo'
     ts=$(date +%s)
     user=user1
     key=someKey
-    curl -H "Authorization: user1 ${ts} $(echo "${user1}${key}${ts}GET${uri}"|sha1sum|cut -f1 -d' ')"  "http://127.0.0.1:2465/${uri}"
+    curl -H "Authorization: ${user} ${ts} $(echo -n "${user}${key}${ts}GET${uri}"|sha1sum|cut -f1 -d' ')"  "http://127.0.0.1:2465${uri}"
     
     
