@@ -32,7 +32,7 @@ Servant config file is in xml, may looks like this;
                 <code>grep hello</code>
             </command>
             <command id="sleep" timeout="5" lang="exec">
-                <code> sleep $t</code>
+                <code> sleep ${t}</code>
             </command>
         </commands>
         <files id="db1">
