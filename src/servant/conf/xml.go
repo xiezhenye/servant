@@ -48,6 +48,7 @@ type XCommand struct {
 	Code         string  `xml:"code"`
 	Timeout      uint32  `xml:"timeout,attr"`
 	User         string  `xml:"runas,attr"`
+	Background   bool    `xml:"background,attr"`
 	Lock         XLock   `xml:"lock"`
 }
 
@@ -176,6 +177,7 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 				Lang: command.Lang,
 				User: command.User,
 				Timeout: command.Timeout,
+				Background: command.Background,
 				Lock: Lock {
 					Name: strings.TrimSpace(command.Lock.Name),
 					Timeout: command.Lock.Timeout,

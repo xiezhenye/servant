@@ -34,6 +34,7 @@ type Command struct {
 	Code         string
 	Timeout      uint32
 	User		 string
+	Background   bool
 	Lock         Lock
 }
 

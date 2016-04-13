@@ -78,15 +78,15 @@ func (self CommandServer) serve() {
 		return
 	}
 	if cmdConf.Lock.Name == "" {
-		self.execCommand(cmdConf)
+		self.serveCommand(cmdConf)
 	} else {
 		if cmdConf.Lock.Wait {
 			GetLock(cmdConf.Lock.Name).TimeoutWith(time.Duration(cmdConf.Lock.Timeout) * time.Second, func() {
-				self.execCommand(cmdConf)
+				self.serveCommand(cmdConf)
 			})
 		} else {
 			GetLock(cmdConf.Lock.Name).TryWith(func(){
-				self.execCommand(cmdConf)
+				self.serveCommand(cmdConf)
 			})
 		}
 	}
@@ -106,74 +106,15 @@ func setCmdUser(cmd *exec.Cmd, username string) error {
 		return err
 	}
 	cred := syscall.Credential{ Uid: uint32(uid), Gid: uint32(gid) }
-	cmd.SysProcAttr = &syscall.SysProcAttr{}
+
 	cmd.SysProcAttr.Credential = &cred
 	return nil
 }
 
-func (self CommandServer) execCommand(cmdConf *conf.Command) {
-	var cmd *exec.Cmd
-	switch cmdConf.Lang {
-	case "exec":
-		cmd = getCmdExec(cmdConf.Code, self.req.URL.Query())
-	case "bash", "":
-		cmd = getCmdBash(cmdConf.Code, self.req.URL.Query())
-	default:
-		self.ErrorEnd(http.StatusInternalServerError, "unknown language")
-		return
-	}
-	if cmdConf.User != "" {
-		err := setCmdUser(cmd, cmdConf.User)
-		if err != nil {
-			self.ErrorEnd(http.StatusInternalServerError, "set user failed: %s", err.Error())
-			return
-		}
-	}
-	if self.req.Method == "POST" {
-		cmd.Stdin = self.req.Body
-	} else {
-		cmd.Stdin = nil
-	}
-
-	cmd.Stderr = nil
-
-	out, err := cmd.StdoutPipe()
+func (self CommandServer) serveCommand(cmdConf *conf.Command) {
+	outBuf, err := self.execCommand(cmdConf)
 	if err != nil {
-		self.ErrorEnd(http.StatusInternalServerError, err.Error())
-		return
-	}
-	defer out.Close()
-
-	var outBuf []byte
-	timeout := time.Duration(cmdConf.Timeout)
-	ch := make(chan error, 1)
-	go func() {
-		err = cmd.Start()
-		if err != nil {
-			ch <- err
-			return
-		}
-		outBuf, err = ioutil.ReadAll(out)
-		if err != nil {
-			ch <- err
-			return
-		}
-		err = cmd.Wait()
-		if err != nil {
-			ch <- err
-			return
-		}
-		ch <- nil
-	}()
-	select {
-	case err = <-ch:
-		if err != nil {
-			self.ErrorEnd(http.StatusBadGateway, "execution error: %s", err)
-			return
-		}
-	case <-time.After(timeout * time.Second):
-		cmd.Process.Kill()
-		self.ErrorEnd(http.StatusGatewayTimeout, "command execution timeout: %d", timeout)
+		self.ErrorEnd(err.(ServantError).HttpCode, err.(ServantError).Message)
 		return
 	}
 	_, err = self.resp.Write(outBuf) // may log errors
@@ -182,4 +123,86 @@ func (self CommandServer) execCommand(cmdConf *conf.Command) {
 	} else {
 		self.GoodEnd("execution done")
 	}
+}
+
+
+
+func (self CommandServer) execCommand(cmdConf *conf.Command) (outBuf []byte, err error) {
+	var cmd *exec.Cmd
+	switch cmdConf.Lang {
+	case "exec":
+		cmd = getCmdExec(cmdConf.Code, self.req.URL.Query())
+	case "bash", "":
+		cmd = getCmdBash(cmdConf.Code, self.req.URL.Query())
+	default:
+		return nil, NewServantError(http.StatusInternalServerError, "unknown language")
+	}
+	cmd.SysProcAttr = &syscall.SysProcAttr{}
+	if cmdConf.User != "" {
+		err := setCmdUser(cmd, cmdConf.User)
+		if err != nil {
+			return nil, NewServantError(http.StatusInternalServerError, "set user failed: %s", err.Error())
+		}
+	}
+	if self.req.Method == "POST" {
+		cmd.Stdin = self.req.Body
+	} else {
+		cmd.Stdin = nil
+	}
+	cmd.Stderr = nil
+	timeout := time.Duration(cmdConf.Timeout)
+	ch := make(chan error, 1)
+	go func() {
+		if cmdConf.Background {
+			cmd.SysProcAttr.Setpgid = true
+			cmd.SysProcAttr.Foreground = false
+			cmd.SysProcAttr.Pgid = 0
+			cmd.Stdout = nil
+			cmd.Stdin  = nil
+
+			err = cmd.Start()
+			if err != nil {
+				ch <- err
+				return
+			}
+			go func() {
+				cmd.Wait()
+			}()
+
+		} else {
+			out, err := cmd.StdoutPipe()
+			if err != nil {
+				ch <- err
+				return
+			}
+			defer out.Close()
+			err = cmd.Start()
+			if err != nil {
+				ch <- err
+				return
+			}
+			outBuf, err = ioutil.ReadAll(out)
+			if err != nil {
+				ch <- err
+				return
+			}
+			err = cmd.Wait()
+			if err != nil {
+				ch <- err
+				return
+			}
+		}
+		ch <- nil
+	}()
+	select {
+	case err = <-ch:
+		if err != nil {
+			return nil, NewServantError(http.StatusBadGateway, "execution error: %s", err)
+		}
+	case <-time.After(timeout * time.Second):
+		cmd.Process.Kill()
+		return nil, NewServantError(http.StatusGatewayTimeout, "command execution timeout: %d", timeout)
+	}
+	return outBuf, nil
+
 }

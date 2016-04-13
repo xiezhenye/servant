@@ -26,6 +26,23 @@ type Session struct {
 	req      *http.Request
 }
 
+type ServantError struct {
+	HttpCode   int
+	Message    string
+	//Error      error
+}
+
+func NewServantError(code int, format string, v ...interface{}) ServantError {
+	return ServantError {
+		HttpCode: code,
+		Message: fmt.Sprintf(format, v...),
+	}
+}
+
+func (self ServantError) Error() string {
+	return fmt.Sprintf("%d: %s", self.HttpCode, self.Message)
+}
+
 func NewServer(config *conf.Config) *Server {
 	ret := &Server {
 		config:         config,

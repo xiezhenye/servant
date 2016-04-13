@@ -27,7 +27,7 @@ _testmain.go
 .idea
 
 *.out
-
+*.log
 src/servant/server/sql_drivers.go
 bin
 
