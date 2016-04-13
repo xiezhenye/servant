@@ -138,6 +138,7 @@ func (self CommandServer) execCommand(cmdConf *conf.Command) (outBuf []byte, err
 		return nil, NewServantError(http.StatusInternalServerError, "unknown language")
 	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{}
+	cmd.Dir = "/"
 	if cmdConf.User != "" {
 		err := setCmdUser(cmd, cmdConf.User)
 		if err != nil {
@@ -154,9 +155,12 @@ func (self CommandServer) execCommand(cmdConf *conf.Command) (outBuf []byte, err
 	ch := make(chan error, 1)
 	go func() {
 		if cmdConf.Background {
-			cmd.SysProcAttr.Setpgid = true
+			//cmd.SysProcAttr.Setpgid = true
+			//cmd.SysProcAttr.Pgid = 0
+
+			cmd.SysProcAttr.Setsid = true
 			cmd.SysProcAttr.Foreground = false
-			cmd.SysProcAttr.Pgid = 0
+
 			cmd.Stdout = nil
 			cmd.Stdin  = nil
 

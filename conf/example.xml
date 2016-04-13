@@ -17,7 +17,11 @@
         <command id="sleep" timeout="5" lang="exec">
             <code> sleep ${t}</code>
         </command>
-    </commands>
+         <command id="sleep_bg" background="1" lang="exec">
+            <code> sleep ${t}</code>
+        </command>
+   </commands>
+
     <files id="db1">
         <dir id="binlog1">
             <root>/data/mysql0</root>
