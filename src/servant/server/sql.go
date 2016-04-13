@@ -70,6 +70,7 @@ func (self DatabaseServer) serve() {
 		return
 	}
 	self.resp.Write(buf)
+	self.GoodEnd("execution done")
 }
 
 func replaceSqlParams(inSql string, query map[string][]string) (outSql string, params []interface{}){
