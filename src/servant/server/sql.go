@@ -14,12 +14,12 @@ type DatabaseServer struct {
 type sqlResult []map[string]string
 
 func NewDatabaseServer(sess *Session) Handler {
-	return &DatabaseServer{
+	return DatabaseServer{
 		Session:sess,
 	}
 }
 
-func (self *DatabaseServer) findDatabaseQueryConfig() (*conf.Database, *conf.Query) {
+func (self DatabaseServer) findDatabaseQueryConfig() (*conf.Database, *conf.Query) {
 	dbConf, ok := self.config.Databases[self.group]
 	if !ok {
 		return nil, nil
@@ -31,21 +31,19 @@ func (self *DatabaseServer) findDatabaseQueryConfig() (*conf.Database, *conf.Que
 	return dbConf, qConf
 }
 
-func (self *DatabaseServer) serve() {
-	urlPath := self.req.URL.Path
+func (self DatabaseServer) serve() {
 	method := self.req.Method
-
 	if method != "GET" {
 		self.ErrorEnd(http.StatusMethodNotAllowed, "not allow method: %s", method)
 		return
 	}
 	dbConf, queryConf := self.findDatabaseQueryConfig()
 	if dbConf == nil {
-		self.ErrorEnd(http.StatusNotFound, "database %s not found", urlPath)
+		self.ErrorEnd(http.StatusNotFound, "database not found")
 		return
 	}
 	if queryConf == nil {
-		self.ErrorEnd(http.StatusNotFound, "query %s not found", urlPath)
+		self.ErrorEnd(http.StatusNotFound, "query not found")
 		return
 	}
 
@@ -93,6 +91,10 @@ func dbQuery(db *sql.DB, sql string, params []interface{}) (sqlResult, error) {
 		return nil, err
 	}
 	defer rows.Close()
+	return rowsToResult(rows)
+}
+
+func rowsToResult(rows *sql.Rows) (sqlResult, error) {
 	columns, err := rows.Columns()
 	if err != nil {
 		return nil, err
@@ -100,7 +102,7 @@ func dbQuery(db *sql.DB, sql string, params []interface{}) (sqlResult, error) {
 	ret := make([]map[string]string, 0, 1)
 	row := make([]interface{}, len(columns))
 	for i, _ := range(row) {
-		row[i] = new(string)
+		row[i] = ""
 	}
 	for rows.Next() {
 		err = rows.Scan(row...)

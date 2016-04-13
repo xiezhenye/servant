@@ -18,12 +18,12 @@ type CommandServer struct {
 }
 
 func NewCommandServer(sess *Session) Handler {
-	return &CommandServer{
+	return CommandServer{
 		Session:sess,
 	}
 }
 
-func (self *CommandServer) findCommandConfigByPath() *conf.Command {
+func (self CommandServer) findCommandConfig() *conf.Command {
 	cmdsConf, ok := self.config.Commands[self.group]
 	if !ok {
 		return nil
@@ -63,7 +63,7 @@ func getCmdExec(code string, query map[string][]string) *exec.Cmd {
 	return exec.Command(args[0], args[1:]...)
 }
 
-func (self *CommandServer) serve() {
+func (self CommandServer) serve() {
 	urlPath := self.req.URL.Path
 	method := self.req.Method
 
@@ -71,7 +71,7 @@ func (self *CommandServer) serve() {
 		self.ErrorEnd(http.StatusMethodNotAllowed, "not allow method: %s", method)
 		return
 	}
-	cmdConf := self.findCommandConfigByPath()
+	cmdConf := self.findCommandConfig()
 	if cmdConf == nil {
 		self.ErrorEnd(http.StatusNotFound, "command %s not found", urlPath)
 		self.resp.WriteHeader(http.StatusNotFound)
@@ -93,15 +93,15 @@ func (self *CommandServer) serve() {
 }
 
 func setCmdUser(cmd *exec.Cmd, username string) error {
-	sysuser, err := user.Lookup(username)
+	sysUser, err := user.Lookup(username)
 	if err != nil {
 		return err
 	}
-	uid , err := strconv.Atoi(sysuser.Uid)
+	uid , err := strconv.Atoi(sysUser.Uid)
 	if err != nil {
 		return err
 	}
-	gid, err := strconv.Atoi(sysuser.Gid)
+	gid, err := strconv.Atoi(sysUser.Gid)
 	if err != nil {
 		return err
 	}
@@ -111,7 +111,7 @@ func setCmdUser(cmd *exec.Cmd, username string) error {
 	return nil
 }
 
-func (self *CommandServer) execCommand(cmdConf *conf.Command) {
+func (self CommandServer) execCommand(cmdConf *conf.Command) {
 	var cmd *exec.Cmd
 	switch cmdConf.Lang {
 	case "exec":
@@ -131,16 +131,19 @@ func (self *CommandServer) execCommand(cmdConf *conf.Command) {
 	}
 	if self.req.Method == "POST" {
 		cmd.Stdin = self.req.Body
+	} else {
+		cmd.Stdin = nil
 	}
 
 	cmd.Stderr = nil
 
 	out, err := cmd.StdoutPipe()
-	defer out.Close()
 	if err != nil {
 		self.ErrorEnd(http.StatusInternalServerError, err.Error())
 		return
 	}
+	defer out.Close()
+
 	var outBuf []byte
 	timeout := time.Duration(cmdConf.Timeout)
 	ch := make(chan error, 1)

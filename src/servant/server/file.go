@@ -18,12 +18,12 @@ type FileServer struct {
 }
 
 func NewFileServer(sess *Session) Handler {
-	return &FileServer{
+	return FileServer{
 		Session:sess,
 	}
 }
 
-func (self *FileServer) findDirConfigByPath() (*conf.Dir, string) {
+func (self FileServer) findDirConfig() (*conf.Dir, string) {
 	filesConf, ok := self.config.Files[self.group]
 	if !ok {
 		return nil, ""
@@ -62,7 +62,7 @@ func checkDirAllow(dirConf *conf.Dir, relPath string, method string) error {
 	return nil
 }
 
-func (self *FileServer) openFileError(err error, method, filePath  string) {
+func (self FileServer) openFileError(err error, method, filePath  string) {
 	e := ""
 	if err != nil {
 		e = err.Error()
@@ -70,7 +70,7 @@ func (self *FileServer) openFileError(err error, method, filePath  string) {
 	self.ErrorEnd(http.StatusInternalServerError, "open file %s for %s failed: %s", filePath, method, e)
 }
 
-func (self *FileServer) serveGetFile(filePath string) error {
+func (self FileServer) serveGetFile(filePath string) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		self.openFileError(err, "GET", filePath)
@@ -101,7 +101,7 @@ func (self *FileServer) serveGetFile(filePath string) error {
 	return err
 }
 
-func (self *FileServer) serveHeadFile(filePath string) error {
+func (self FileServer) serveHeadFile(filePath string) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		self.openFileError(err, "HEAD", filePath)
@@ -120,7 +120,7 @@ func (self *FileServer) serveHeadFile(filePath string) error {
 	return nil
 }
 
-func (self *FileServer) servePostFile(filePath string) error {
+func (self FileServer) servePostFile(filePath string) error {
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0664)
 	if err != nil {
 		self.openFileError(err, "POST", filePath)
@@ -131,7 +131,7 @@ func (self *FileServer) servePostFile(filePath string) error {
 	return err
 }
 
-func (self *FileServer) servePutFile(filePath string) error {
+func (self FileServer) servePutFile(filePath string) error {
 	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_TRUNC, 0664)
 	if err != nil {
 		self.openFileError(err, "PUT", filePath)
@@ -142,7 +142,7 @@ func (self *FileServer) servePutFile(filePath string) error {
 	return err
 }
 
-func (self *FileServer) serveDeleteFile(filePath string) error {
+func (self FileServer) serveDeleteFile(filePath string) error {
 	err := os.Remove(filePath)
 	if err != nil {
 		self.ErrorEnd(http.StatusInternalServerError, "delete file %s failed", filePath)
@@ -151,11 +151,11 @@ func (self *FileServer) serveDeleteFile(filePath string) error {
 	return nil
 }
 
-func (self *FileServer) serve() {
+func (self FileServer) serve() {
 	method := self.req.Method
 	urlPath := self.req.URL.Path
 
-	dirConf, relPath := self.findDirConfigByPath()
+	dirConf, relPath := self.findDirConfig()
 	if dirConf == nil {
 		self.ErrorEnd(http.StatusNotFound, "dir of %s not found", urlPath)
 		return
