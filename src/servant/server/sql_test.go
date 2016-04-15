@@ -45,7 +45,7 @@ func TestRowToResult(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if fmt.Sprintf("%v", result) != "[map[a:3 b:3 c:3]]" {
+	if fmt.Sprintf("%v", result) != "[map[a:1 b:2 c:3]]" {
 		t.Error(result)
 	}
 }

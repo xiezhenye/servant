@@ -102,9 +102,8 @@ func rowsToResult(rows *sql.Rows) (sqlResult, error) {
 	}
 	ret := make([]map[string]string, 0, 1)
 	row := make([]interface{}, len(columns))
-	s := new(string)
 	for i, _ := range(row) {
-		row[i] = s
+		row[i] = new(string)
 	}
 	for rows.Next() {
 		err = rows.Scan(row...)
