@@ -1,5 +1,10 @@
 package server
-import "testing"
+import (
+	"testing"
+	"gopkg.in/DATA-DOG/go-sqlmock.v1"
+	"database/sql"
+	"fmt"
+)
 
 func TestReplaceSqlParams(t *testing.T) {
 	p1 := map[string][]string{ "a":[]string{"1"} }
@@ -25,3 +30,23 @@ func TestReplaceSqlParams(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func mockRowsToSqlRows(mockRows sqlmock.Rows) *sql.Rows {
+	db, mock, _ := sqlmock.New()
+	mock.ExpectQuery("select").WillReturnRows(mockRows)
+	rows, _ := db.Query("select")
+	return rows
+}
+
+func TestRowToResult(t *testing.T) {
+	mockRows := sqlmock.NewRows([]string{"a","b","c"})
+	mockRows.AddRow(1, 2, 3)
+	result, err := rowsToResult(mockRowsToSqlRows(mockRows))
+	if err != nil {
+		t.Error(err)
+	}
+	if fmt.Sprintf("%v", result) != "[map[a:3 b:3 c:3]]" {
+		t.Error(result)
+	}
+}
+
