@@ -119,3 +119,4 @@ func rowsToResult(rows *sql.Rows) (sqlResult, error) {
 	}
 	return ret, nil
 }
+
