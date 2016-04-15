@@ -70,85 +70,101 @@ func (self FileServer) openFileError(err error, method, filePath  string) {
 	self.ErrorEnd(http.StatusInternalServerError, "open file %s for %s failed: %s", filePath, method, e)
 }
 
-func (self FileServer) serveGetFile(filePath string) error {
+func (self FileServer) serveGet(filePath string) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		self.openFileError(err, "GET", filePath)
-		return err
+		return
 	}
 	defer file.Close()
 	info, err := file.Stat()
 	if err != nil || info.IsDir() {
 		self.openFileError(err, "GET", filePath)
-		return err
+		return
 	}
 	rangeStr := self.req.Header.Get("Range")
 	ranges, err := parseRange(rangeStr, info.Size())
 	if err != nil || len(ranges) > 1 {
 		self.ErrorEnd(http.StatusBadRequest, "bad range format or too many ranges(%s)", rangeStr)
-		return err
+		return
 	}
 	length := info.Size()
 	if ranges != nil && len(ranges) == 1 {
 		length = ranges[0].length
 		if _, err = file.Seek(ranges[0].start, os.SEEK_SET); err != nil {
 			self.openFileError(err, "GET", filePath)
-			return err
+			return
 		}
 		self.resp.Header().Set("Content-Range", ranges[0].contentRange(info.Size()))
 	}
 	_, err = io.CopyN(self.resp, file, length)
-	return err
+	if err != nil {
+		self.BadEnd("io error: %s", err)
+	} else {
+		self.GoodEnd("GET done")
+	}
 }
 
-func (self FileServer) serveHeadFile(filePath string) error {
+func (self FileServer) serveHead(filePath string) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		self.openFileError(err, "HEAD", filePath)
-		return err
+		return
 	}
 	defer file.Close()
 	info, err := file.Stat()
 	if err != nil || info.IsDir() {
 		self.openFileError(err, "HEAD", filePath)
-		return err
+		return
 	}
 	self.resp.Header().Add("X-Servant-File-Size", strconv.FormatInt(info.Size(), 10))
 	self.resp.Header().Add("X-Servant-File-Mtime", info.ModTime().String())
 	self.resp.Header().Add("X-Servant-File-Mode", info.Mode().String())
 	self.resp.Header().Add("Connection", "close")
-	return nil
+	self.GoodEnd("HEAD done")
 }
 
-func (self FileServer) servePostFile(filePath string) error {
+func (self FileServer) servePost(filePath string) {
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0664)
 	if err != nil {
 		self.openFileError(err, "POST", filePath)
-		return err
+		return
 	}
 	defer file.Close()
 	_, err = io.Copy(file, self.req.Body)
-	return err
+	if err != nil {
+		self.ErrorEnd(http.StatusInternalServerError, "io error: %s", err)
+	} else {
+		self.GoodEnd("POST done")
+	}
 }
 
-func (self FileServer) servePutFile(filePath string) error {
+func (self FileServer) servePut(filePath string) {
 	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_TRUNC, 0664)
 	if err != nil {
 		self.openFileError(err, "PUT", filePath)
-		return err
+		return
 	}
 	defer file.Close()
 	_, err = io.Copy(file, self.req.Body)
-	return err
+	if err != nil {
+		self.ErrorEnd(http.StatusInternalServerError, "io error: %s", err)
+	} else {
+		self.GoodEnd("PUT done")
+	}
 }
 
-func (self FileServer) serveDeleteFile(filePath string) error {
+func (self FileServer) serveDelete(filePath string) {
 	err := os.Remove(filePath)
 	if err != nil {
-		self.ErrorEnd(http.StatusInternalServerError, "delete file %s failed", filePath)
-		return err
+		self.ErrorEnd(http.StatusInternalServerError, "delete file fail: %s", err)
+	} else {
+		self.GoodEnd("DELETE done")
 	}
-	return nil
+}
+
+func (self FileServer) serveUnknown(filePath string) {
+	self.ErrorEnd(http.StatusMethodNotAllowed, "method not allowd")
 }
 
 func (self FileServer) serve() {
@@ -170,23 +186,23 @@ func (self FileServer) serve() {
 		self.ErrorEnd(http.StatusForbidden, "attempt to %s out of root: %s", method, relPath)
 		return
 	}
+	self.funcByMethod(method)(filePath)
+}
+
+func (self FileServer) funcByMethod(method string) func(string) {
 	switch method {
 	case "HEAD":
-		err = self.serveHeadFile(filePath)
+		return self.serveHead
 	case "GET":
-		err = self.serveGetFile(filePath)
+		return self.serveGet
 	case "POST":
-		err = self.servePostFile(filePath)
+		return self.servePost
 	case "DELETE":
-		err = self.serveDeleteFile(filePath)
+		return self.serveDelete
 	case "PUT":
-		err = self.servePutFile(filePath)
+		return self.servePut
 	}
-	if err != nil {
-		self.BadEnd("io error: %s", err)
-	} else {
-		self.GoodEnd("%s done", method)
-	}
+	return self.serveUnknown
 }
 
 // copied from go source
@@ -194,6 +210,7 @@ func (self FileServer) serve() {
 type httpRange struct {
 	start, length int64
 }
+
 func (r httpRange) contentRange(size int64) string {
 	return fmt.Sprintf("bytes %d-%d/%d", r.start, r.start+r.length-1, size)
 }

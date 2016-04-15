@@ -126,7 +126,6 @@ func (self CommandServer) serveCommand(cmdConf *conf.Command) {
 }
 
 
-
 func (self CommandServer) execCommand(cmdConf *conf.Command) (outBuf []byte, err error) {
 	var cmd *exec.Cmd
 	switch cmdConf.Lang {
@@ -157,10 +156,8 @@ func (self CommandServer) execCommand(cmdConf *conf.Command) (outBuf []byte, err
 		if cmdConf.Background {
 			//cmd.SysProcAttr.Setpgid = true
 			//cmd.SysProcAttr.Pgid = 0
-
 			cmd.SysProcAttr.Setsid = true
 			cmd.SysProcAttr.Foreground = false
-
 			cmd.Stdout = nil
 			cmd.Stdin  = nil
 
@@ -169,6 +166,7 @@ func (self CommandServer) execCommand(cmdConf *conf.Command) (outBuf []byte, err
 				ch <- err
 				return
 			}
+			self.info("process started. pid: %d", cmd.Process.Pid)
 			go func() {
 				cmd.Wait()
 			}()
@@ -181,10 +179,12 @@ func (self CommandServer) execCommand(cmdConf *conf.Command) (outBuf []byte, err
 			}
 			defer out.Close()
 			err = cmd.Start()
+
 			if err != nil {
 				ch <- err
 				return
 			}
+			self.info("process started. pid: %d", cmd.Process.Pid)
 			outBuf, err = ioutil.ReadAll(out)
 			if err != nil {
 				ch <- err
@@ -198,6 +198,7 @@ func (self CommandServer) execCommand(cmdConf *conf.Command) (outBuf []byte, err
 		}
 		ch <- nil
 	}()
+
 	select {
 	case err = <-ch:
 		if err != nil {

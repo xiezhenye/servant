@@ -3,9 +3,10 @@ package server
 import (
 	"testing"
 	"servant/conf"
+	"reflect"
 )
 
-func TestCheck(t *testing.T) {
+func TestCheckDirAllow(t *testing.T) {
 	dirConf := conf.Dir {
 		Allows: []string {
 			"POST",
@@ -59,5 +60,47 @@ func TestCheck(t *testing.T) {
 
 	if checkDirAllow(&dirConf, "aaa", "POST") == nil {
 		t.Errorf("POST should be denied")
+	}
+}
+
+func TestParseRange(t *testing.T) {
+	rgs, err := parseRange("", 1)
+	if err != nil || rgs != nil {
+		t.Fail()
+	}
+	rgs, err = parseRange("111", 1)
+	if err == nil || rgs != nil {
+		t.Fail()
+	}
+	rgs, err = parseRange("bytes=0-10", 20)
+	if len(rgs)!=1 || rgs[0].start != 0 || rgs[0].length != 11 {
+		t.Fail()
+	}
+
+	rgs, err = parseRange("bytes=-10", 20)
+	if len(rgs)!=1 || rgs[0].start != 10 || rgs[0].length != 10 {
+		t.Fail()
+	}
+
+	rgs, err = parseRange("bytes=1-", 20)
+	if len(rgs)!=1 || rgs[0].start != 1 || rgs[0].length != 19 {
+		t.Fail()
+	}
+}
+
+func TestContentRange(t *testing.T) {
+	r := httpRange{ 2, 3 }.contentRange(5)
+	if r != "bytes 2-4/5" {
+		t.Fail()
+	}
+}
+
+func TestFuncByMethod(t *testing.T) {
+	s := FileServer{}
+	if reflect.ValueOf(s.funcByMethod("XXX")).Pointer() != reflect.ValueOf(s.serveUnknown).Pointer() {
+		t.Fail()
+	}
+	if reflect.ValueOf(s.funcByMethod("GET")).Pointer() != reflect.ValueOf(s.serveGet).Pointer() {
+		t.Fail()
 	}
 }

@@ -115,17 +115,17 @@ type HandlerFactory func(sess *Session) Handler
 
 func (self *Session) ErrorEnd(code int, format string, v ...interface{}) {
 	msg := fmt.Sprintf(format, v...)
-	self.warn(self.resource, "- " + msg)
+	self.warn("- " + msg)
 	self.resp.Header().Set(ServantErrHeader, msg)
 	self.resp.WriteHeader(code)
 }
 
 func (self *Session) BadEnd(format string, v ...interface{}) {
-	self.warn(self.resource, "- " + format, v...)
+	self.warn("- " + format, v...)
 }
 
 func (self *Session) GoodEnd(format string, v ...interface{}) {
-	self.info(self.resource, "- " + format, v...)
+	self.info("- " + format, v...)
 }
 
 func (self *Session) UserConfig() *conf.User {
