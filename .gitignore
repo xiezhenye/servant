@@ -28,6 +28,7 @@ _testmain.go
 
 *.out
 *.log
+*.tar.gz
 src/servant/server/sql_drivers.go
 bin
 gopkg.in/
