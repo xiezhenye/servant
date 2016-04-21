@@ -71,7 +71,7 @@ func (self *Server) newSession(resp http.ResponseWriter, req *http.Request) *Ses
 }
 
 
-var uriRe, _ = regexp.Compile(`^/(\w+)/(\w+)/(\w+)(/.*)?$`)
+var uriRe, _ = regexp.Compile(`^/(\w+)/(\w(?:[-]?\w+)*)/(\w(?:[-]?\w+)*)(/.*)?$`)
 func parseUriPath(path string) (resource, group, item, tail string) {
 	m := uriRe.FindStringSubmatch(path)
 	if len(m) != 5 {
