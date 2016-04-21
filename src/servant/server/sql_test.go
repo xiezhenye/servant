@@ -3,7 +3,6 @@ import (
 	"testing"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 	"database/sql"
-	"fmt"
 )
 
 func TestReplaceSqlParams(t *testing.T) {
@@ -38,6 +37,7 @@ func mockRowsToSqlRows(mockRows sqlmock.Rows) *sql.Rows {
 	return rows
 }
 
+
 func TestRowToResult(t *testing.T) {
 	mockRows := sqlmock.NewRows([]string{"a","b","c"})
 	mockRows.AddRow(1, 2, 3)
@@ -45,8 +45,12 @@ func TestRowToResult(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if fmt.Sprintf("%v", result) != "[map[a:1 b:2 c:3]]" {
-		t.Error(result)
+	if len(result) != 1 || len(result[0]) != 3 {
+		t.Fail()
 	}
+	if result[0]["a"] != "1" || result[0]["b"] != "2" || result[0]["c"] != "3" {
+		t.Fail()
+	}
+
 }
 
