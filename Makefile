@@ -34,10 +34,10 @@ bin/servant:$(arch)/bin/servant
 	cp -r $(arch)/bin .
 
 linux_amd64/bin/servant:$(drivers_file)
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOPATH=$(pwd) GOBIN=$(pwd)/linux_amd64/bin go install src/servant.go
+	GOOS=linux GOARCH=amd64 GOPATH=$(pwd) GOBIN=$(pwd)/linux_amd64/bin go install src/servant.go
 
 darwin_amd64/bin/servant:$(drivers_file) 
-	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 GOPATH=$(pwd) GOBIN=$(pwd)/darwin_amd64/bin go install src/servant.go
+	GOOS=darwin GOARCH=amd64 GOPATH=$(pwd) GOBIN=$(pwd)/darwin_amd64/bin go install src/servant.go
 
 
 tarball:servant.tar.gz
