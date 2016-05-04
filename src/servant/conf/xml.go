@@ -21,6 +21,8 @@ type XConfig struct {
 type XServer struct {
 	Listen  string      `xml:"listen"`
 	Auth    XAuth       `xml:"auth"`
+	Log     string      `xml:"log"`
+
 }
 
 type XAuth struct {
@@ -134,6 +136,7 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 			Enabled:      conf.Server.Auth.Enabled,
 			MaxTimeDelta: conf.Server.Auth.MaxTimeDelta,
 		}
+		ret.Log = conf.Server.Log
 	}
 
 	ret.Files = make(map[string]*Files)

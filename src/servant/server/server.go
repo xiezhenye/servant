@@ -7,6 +7,7 @@ import (
 	"time"
 	"regexp"
 	"fmt"
+	"os"
 )
 
 const ServantErrHeader = "X-Servant-Err"
@@ -49,6 +50,14 @@ func NewServer(config *conf.Config) *Server {
 		nextSessionId:  0,
 		resources:      make(map[string]HandlerFactory),
 	}
+	if config.Log != "" {
+		file, err := os.OpenFile(config.Log, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0664)
+		if err == nil {
+			logger.SetOutput(file)
+		} else {
+			logger.Printf("can not open log file %s", config.Log)
+		}
+	}
 	ret.resources["commands"] = NewCommandServer
 	ret.resources["files"] = NewFileServer
 	ret.resources["databases"] = NewDatabaseServer
@@ -87,7 +96,7 @@ var paramRe, _ = regexp.Compile(`\${\w+}`)
 func (self *Server) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	sess := self.newSession(resp, req)
-	sess.info(sess.resource, "+ %s %s %s", req.RemoteAddr, req.Method, req.URL.Path)
+	sess.info("+ %s %s %s", req.RemoteAddr, req.Method, req.URL.Path)
 	username, err := sess.auth()
 	if err != nil {
 		sess.ErrorEnd(http.StatusForbidden, "auth failed: %s", err)

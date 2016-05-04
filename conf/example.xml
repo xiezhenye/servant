@@ -5,6 +5,7 @@
         <auth enabled="0">
             <maxTimeDelta>300</maxTimeDelta>
         </auth>
+        <log>servant.log</log>
     </server>
 
     <commands id="db1">

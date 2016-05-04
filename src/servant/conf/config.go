@@ -7,6 +7,7 @@ type Config struct {
 	Files      map[string]*Files
 	Databases  map[string]*Database
 	Auth       Auth
+	Log        string
 }
 
 
