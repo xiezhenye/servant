@@ -142,7 +142,7 @@ func (self *Session) UserConfig() *conf.User {
 	return ret
 }
 
-func (self *Server) Run() {
+func (self *Server) Run() error {
 	s := &http.Server{
 		Addr:           self.config.Server.Listen,
 		Handler:        self,
@@ -150,6 +150,6 @@ func (self *Server) Run() {
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 8192,
 	}
-	s.ListenAndServe()
+	return s.ListenAndServe()
 }
 
