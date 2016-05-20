@@ -6,6 +6,9 @@ type Config struct {
 	Commands   map[string]*Commands
 	Files      map[string]*Files
 	Databases  map[string]*Database
+	Timers     map[string]*Timer
+	Daemons    map[string]*Daemon
+
 	Auth       Auth
 	Log        string
 }
@@ -60,7 +63,23 @@ type Files struct {
 }
 
 type Dir struct {
-	Root     string
+	Root      string
 	Allows    []string
 	Patterns  []string
+}
+
+type Timer struct {
+	Lang      string
+	Code      string
+	User      string
+	Tick      int
+	Deadline  uint32
+}
+
+type Daemon struct {
+	Lang      string
+	Code      string
+	User      string
+	Retries   int
+	Live      int
 }

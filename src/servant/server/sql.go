@@ -55,7 +55,7 @@ func (self DatabaseServer) serve() {
 	defer db.Close()
 	data := make([]sqlResult, 0, 1)
 	for _, sql := range(queryConf.Sqls) {
-		sql, params := replaceSqlParams(sql, self.req.URL.Query())
+		sql, params := replaceSqlParams(sql, requestParams(self.req))
 
 		result, err := dbQuery(db, sql, params)
 		if err != nil {
@@ -73,15 +73,14 @@ func (self DatabaseServer) serve() {
 	self.GoodEnd("execution done")
 }
 
-func replaceSqlParams(inSql string, query map[string][]string) (outSql string, params []interface{}){
+func replaceSqlParams(inSql string, query func(string)string) (outSql string, params []interface{}){
 	params = make([]interface{}, 0, 4)
 	return paramRe.ReplaceAllStringFunc(inSql, func(s string) string {
-		v, ok := query[s[2:len(s) - 1]]
-		if ok {
-			params = append(params, v[0])
- 		} else {
-			params = append(params, "")
+		var v string = ""
+		if query != nil {
+			v = query(s[2:len(s) - 1])
 		}
+		params = append(params, v)
 		return "?"
 	}), params
 }

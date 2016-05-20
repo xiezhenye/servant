@@ -80,7 +80,7 @@ func (self *Server) newSession(resp http.ResponseWriter, req *http.Request) *Ses
 }
 
 
-var uriRe, _ = regexp.Compile(`^/(\w+)/(\w(?:[-]?\w+)*)/(\w(?:[-]?\w+)*)(/.*)?$`)
+var uriRe, _ = regexp.Compile(`^/([a-zA-Z]\w*)/([a-zA-Z]\w*)/([a-zA-Z]\w*)((?:/.*)?)$`)
 func parseUriPath(path string) (resource, group, item, tail string) {
 	m := uriRe.FindStringSubmatch(path)
 	if len(m) != 5 {
@@ -90,8 +90,24 @@ func parseUriPath(path string) (resource, group, item, tail string) {
 	return
 }
 
-var paramRe, _ = regexp.Compile(`\${\w+}`)
+var paramRe, _ = regexp.Compile(`\${[a-zA-Z_]\w?(?:\.[a-zA-Z_]\w*)?}`)
 
+var globalParams = map[string]string {
+}
+
+func requestParams(req *http.Request) func(string)string {
+	// ${aaa} ${foo.bar} ${_env.PATH}
+	q := req.URL.Query()
+	return func(k string) string {
+		if v, ok := globalParams[k]; ok {
+			return v
+		}
+		if ok, _ := regexp.MatchString(`^[a-zA-Z]\w+$`, k); ok {
+			return q.Get(k)
+		}
+		return ""
+	}
+}
 
 func (self *Server) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
@@ -142,6 +158,18 @@ func (self *Session) UserConfig() *conf.User {
 	return ret
 }
 
+func (self *Server) StartDaemons() {
+	for name, conf := range(self.config.Daemons) {
+		go RunDaemon(name, conf)
+	}
+}
+
+func (self *Server) StartTimers() {
+	for name, conf := range(self.config.Timers) {
+		go RunTimer(name, conf)
+	}
+}
+
 func (self *Server) Run() error {
 	s := &http.Server{
 		Addr:           self.config.Server.Listen,
@@ -150,6 +178,8 @@ func (self *Server) Run() error {
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 8192,
 	}
+	self.StartDaemons()
+	self.StartTimers()
 	return s.ListenAndServe()
 }
 
