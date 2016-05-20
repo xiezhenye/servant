@@ -6,8 +6,21 @@ import (
 )
 
 func TestReplaceSqlParams(t *testing.T) {
-	p1 := map[string][]string{ "a":[]string{"1"} }
-	p2 := map[string][]string{ "a":[]string{"1"},"b":[]string{"2"} }
+	p1 := func(k string)string {
+		if k == "a" {
+			return "1"
+		}
+		return ""
+	}
+	p2 := func(k string)string {
+		if k == "a" {
+			return "1"
+		}
+		if k == "b" {
+			return "2"
+		}
+		return ""
+	}
 
 	s, p := replaceSqlParams("select 1", p1)
 	if s != "select 1" || len(p) != 0 {

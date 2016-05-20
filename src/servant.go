@@ -5,6 +5,7 @@ import (
 	"servant/server"
 	"fmt"
 	"flag"
+	"os"
 )
 
 type arrayFlags []string
@@ -31,5 +32,9 @@ func main() {
 		}
 		xconf.IntoConfig(&config)
 	}
-	server.NewServer(&config).Run()
+	err := server.NewServer(&config).Run()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(2)
+	}
 }

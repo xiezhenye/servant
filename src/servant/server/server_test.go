@@ -9,11 +9,15 @@ func TestParseUriPath(t *testing.T) {
 	if r != "aaa" || g != "bbb" || i != "ccc" || l != "/ddd" {
 		t.Fail()
 	}
-	r, g, i, l = parseUriPath("/a_a_a/b-b-b/_ccc_")
-	if r != "a_a_a" || g != "b-b-b" || i != "_ccc_" || l != "" {
+	r, g, i, l = parseUriPath("/a_a_a/bbb/ccc_")
+	if r != "a_a_a" || g != "bbb" || i != "ccc_" || l != "" {
 		t.Fail()
 	}
-	r, g, i, l = parseUriPath("/a_a_a/b-b-b/-/ddd")
+	r, g, i, l = parseUriPath("/a_a_a/b-b-b/ddd")
+	if r != "" || g != "" || i != "" || l != "" {
+		t.Fail()
+	}
+	r, g, i, l = parseUriPath("/a_a_a/_bb/ddd")
 	if r != "" || g != "" || i != "" || l != "" {
 		t.Fail()
 	}

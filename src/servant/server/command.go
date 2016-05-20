@@ -5,10 +5,11 @@ import (
 	"os/user"
 	"os/exec"
 	"servant/conf"
-	"io/ioutil"
+	//"io/ioutil"
 	"time"
 	"syscall"
 	"strconv"
+	"io"
 )
 
 var argRe, _ = regexp.Compile(`("[^"]*"|'[^']*'|[^\s]+)`)
@@ -35,23 +36,22 @@ func (self CommandServer) findCommandConfig() *conf.Command {
 	return cmdConf
 }
 
-func getCmdBash(code string, query map[string][]string) *exec.Cmd{
+func getCmdBash(code string, query func(string)string) *exec.Cmd{
 	return exec.Command("bash", "-c", code)
 }
 
-func replaceCmdParams(arg string, query map[string][]string) string {
+func replaceCmdParams(arg string, query func(string)string) string {
 	return paramRe.ReplaceAllStringFunc(arg, func(s string) string {
-		v, ok := query[s[2:len(s) - 1]]
-		if ok {
-			return v[0] // only the first arg with the name will be used
+		if query == nil {
+			return ""
 		}
-		return ""
+		return query(s[2:len(s) - 1])
 	})
 }
 
-func getCmdExec(code string, query map[string][]string) *exec.Cmd {
+func getCmdExec(code string, query func(string)string) *exec.Cmd {
 	argsMatches := argRe.FindAllStringSubmatch(code, -1)
-	args := make([]string, 0, 8)
+	args := make([]string, 0, 4)
 	for i := 0; i < len(argsMatches); i++ {
 		arg := argsMatches[i][1]
 		if arg[0] == '\'' || arg[0] == '"' {
@@ -126,13 +126,13 @@ func (self CommandServer) serveCommand(cmdConf *conf.Command) {
 }
 
 
-func (self CommandServer) execCommand(cmdConf *conf.Command) (outBuf []byte, err error) {
+func cmdFromConf(cmdConf *conf.Command, params func(string)string, input io.ReadCloser) (*exec.Cmd, error) {
 	var cmd *exec.Cmd
 	switch cmdConf.Lang {
 	case "exec":
-		cmd = getCmdExec(cmdConf.Code, self.req.URL.Query())
+		cmd = getCmdExec(cmdConf.Code, params)
 	case "bash", "":
-		cmd = getCmdBash(cmdConf.Code, self.req.URL.Query())
+		cmd = getCmdBash(cmdConf.Code, params)
 	default:
 		return nil, NewServantError(http.StatusInternalServerError, "unknown language")
 	}
@@ -144,70 +144,66 @@ func (self CommandServer) execCommand(cmdConf *conf.Command) (outBuf []byte, err
 			return nil, NewServantError(http.StatusInternalServerError, "set user failed: %s", err.Error())
 		}
 	}
-	if self.req.Method == "POST" {
-		cmd.Stdin = self.req.Body
-	} else {
+	cmd.Stdin = input
+	cmd.Stderr = nil
+	if cmdConf.Background {
+		//cmd.SysProcAttr.Setpgid = true
+		//cmd.SysProcAttr.Pgid = 0
+		cmd.SysProcAttr.Setsid = true
+		cmd.SysProcAttr.Foreground = false
+		cmd.Stdout = nil
 		cmd.Stdin = nil
 	}
-	cmd.Stderr = nil
-	timeout := time.Duration(cmdConf.Timeout)
-	ch := make(chan error, 1)
-	go func() {
-		if cmdConf.Background {
-			//cmd.SysProcAttr.Setpgid = true
-			//cmd.SysProcAttr.Pgid = 0
-			cmd.SysProcAttr.Setsid = true
-			cmd.SysProcAttr.Foreground = false
-			cmd.Stdout = nil
-			cmd.Stdin  = nil
+	return cmd, nil
+}
 
-			err = cmd.Start()
-			if err != nil {
-				ch <- err
-				return
-			}
-			self.info("process started. pid: %d", cmd.Process.Pid)
-			go func() {
-				cmd.Wait()
-			}()
-
-		} else {
-			out, err := cmd.StdoutPipe()
-			if err != nil {
-				ch <- err
-				return
-			}
-			defer out.Close()
-			err = cmd.Start()
-
-			if err != nil {
-				ch <- err
-				return
-			}
-			self.info("process started. pid: %d", cmd.Process.Pid)
-			outBuf, err = ioutil.ReadAll(out)
-			if err != nil {
-				ch <- err
-				return
-			}
+func (self CommandServer) execCommand(cmdConf *conf.Command) (outBuf []byte, err error) {
+	var input io.ReadCloser = nil
+	if self.req.Method == "POST" {
+		input = self.req.Body
+	}
+	cmd, err := cmdFromConf(cmdConf, requestParams(self.req), input)
+	if err != nil {
+		return
+	}
+	err = cmd.Start()
+	if err != nil {
+		err = NewServantError(http.StatusBadGateway, "execution error: %s", err)
+		return
+	}
+	self.info("process started. pid: %d", cmd.Process.Pid)
+	if cmdConf.Background {
+		go func() {
 			err = cmd.Wait()
 			if err != nil {
-				ch <- err
-				return
+				self.warn("background process %d ended with error: %s", cmd.Process.Pid, err.Error())
+			} else {
+				self.info("background process %d ended", cmd.Process.Pid)
 			}
+		}()
+	} else {
+		ch := make(chan error, 1)
+		go func() {
+			if cmd.Stdout != nil {
+				outBuf, err = cmd.Output()
+				if err != nil {
+					ch <- err
+					return
+				}
+			}
+			err = cmd.Wait()
+			ch <- err
+		}()
+		timeout := time.Duration(cmdConf.Timeout)
+		select {
+		case err = <-ch:
+			if err != nil {
+				err = NewServantError(http.StatusBadGateway, "execution error: %s", err)
+			}
+		case <-time.After(timeout * time.Second):
+			cmd.Process.Kill()
+			err = NewServantError(http.StatusGatewayTimeout, "command execution timeout: %d", timeout)
 		}
-		ch <- nil
-	}()
-
-	select {
-	case err = <-ch:
-		if err != nil {
-			return nil, NewServantError(http.StatusBadGateway, "execution error: %s", err)
-		}
-	case <-time.After(timeout * time.Second):
-		cmd.Process.Kill()
-		return nil, NewServantError(http.StatusGatewayTimeout, "command execution timeout: %d", timeout)
 	}
-	return outBuf, nil
-
+	return
 }

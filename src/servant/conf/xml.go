@@ -16,13 +16,15 @@ type XConfig struct {
 	Commands   []XCommands `xml:"commands"`
 	Files      []XFiles    `xml:"files"`
 	Databases  []XDatabase `xml:"database"`
+	Timers     []XTimer    `xml:"timer"`
+	Daemons    []XDaemon   `xml:"daemon"`
+
 }
 
 type XServer struct {
 	Listen  string      `xml:"listen"`
 	Auth    XAuth       `xml:"auth"`
 	Log     string      `xml:"log"`
-
 }
 
 type XAuth struct {
@@ -62,7 +64,7 @@ type XDatabase struct {
 }
 
 type XQuery struct {
-	Name    string `xml:"id,attr"`
+	Name    string   `xml:"id,attr"`
 	Sqls    []string `xml:"sql"`
 }
 
@@ -82,6 +84,24 @@ type XDir struct {
 	Root      string    `xml:"root"`
 	Allows    []string  `xml:"allow"`
 	Patterns  []string  `xml:"pattern"`
+}
+
+type XTimer struct {
+	Name      string `xml:"id,attr"`
+	Lang      string `xml:"lang,attr"`
+	Code      string `xml:"code"`
+	User      string `xml:"runas,attr"`
+	Tick      int    `xml:"tick,attr"`
+	Deadline  uint32 `xml:"deadline,attr"`
+}
+
+type XDaemon struct {
+	Name      string `xml:"id,attr"`
+	Lang      string `xml:"lang,attr"`
+	Code      string `xml:"code"`
+	User      string `xml:"runas,attr"`
+	Retries   int    `xml:"retries,attr"`
+	Live      int    `xml:"live,attr"`
 }
 
 type XUserFiles struct {
@@ -201,6 +221,35 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 			ret.Databases[dname].Queries[query.Name] = &Query{ Sqls: query.Sqls }
 		}
 	}
+
+	ret.Daemons = make(map[string]*Daemon)
+	for _, daemon := range(conf.Daemons) {
+		if daemon.Live <= 0 {
+			daemon.Live = math.MaxUint32
+		}
+		ret.Daemons[daemon.Name] = &Daemon{
+			Code: daemon.Code,
+			Lang: daemon.Lang,
+			User: daemon.User,
+			Live: daemon.Live,
+			Retries: daemon.Retries,
+		}
+	}
+
+	ret.Timers = make(map[string]*Timer)
+	for _, timer := range(conf.Timers) {
+		if timer.Deadline <= 0 {
+			timer.Deadline = math.MaxUint32
+		}
+		ret.Timers[timer.Name] = &Timer{
+			Code: timer.Code,
+			Lang: timer.Lang,
+			User: timer.User,
+			Tick: timer.Tick,
+			Deadline: timer.Deadline,
+		}
+	}
+
 	ret.Users = make(map[string]*User)
 	for _, user := range(conf.Users) {
 		uname := user.Name

@@ -85,7 +85,7 @@ func (self FileServer) serveGet(filePath string) {
 	rangeStr := self.req.Header.Get("Range")
 	ranges, err := parseRange(rangeStr, info.Size())
 	if err != nil || len(ranges) > 1 {
-		self.ErrorEnd(http.StatusBadRequest, "bad range format or too many ranges(%s)", rangeStr)
+		self.ErrorEnd(http.StatusBadRequest, "bad range format or too many ranges(%s) %v", rangeStr, err)
 		return
 	}
 	length := info.Size()
@@ -140,7 +140,7 @@ func (self FileServer) servePost(filePath string) {
 }
 
 func (self FileServer) servePut(filePath string) {
-	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_TRUNC, 0664)
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0664)
 	if err != nil {
 		self.openFileError(err, "PUT", filePath)
 		return
@@ -224,7 +224,7 @@ func parseRange(s string, size int64) ([]httpRange, error) {
 	if !strings.HasPrefix(s, b) {
 		return nil, badRange
 	}
-	var ranges []httpRange
+	ranges := make([]httpRange, 0, 1)
 	for _, ra := range strings.Split(s[len(b):], ",") {
 		ra = strings.TrimSpace(ra)
 		if ra == "" {
