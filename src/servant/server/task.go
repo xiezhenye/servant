@@ -2,7 +2,36 @@ package server
 import (
 	"servant/conf"
 	"time"
+	"os/exec"
+	"sync"
+	"syscall"
+	"os/signal"
+	"os"
 )
+
+
+var taskProcesses = make(map[int] *exec.Cmd)
+var taskProcessesLock sync.Mutex
+var _isExiting bool = false
+
+func registerProcess(cmd *exec.Cmd) {
+	taskProcessesLock.Lock()
+	taskProcesses[cmd.Process.Pid] = cmd
+	taskProcessesLock.Unlock()
+}
+
+func unregisterProcess(cmd *exec.Cmd) {
+	taskProcessesLock.Lock()
+	delete(taskProcesses, cmd.Process.Pid)
+	taskProcessesLock.Unlock()
+}
+
+func isExiting() bool {
+	taskProcessesLock.Lock()
+	ret := _isExiting
+	taskProcessesLock.Unlock()
+	return ret
+}
 
 func RunTimer(name string, timerConf *conf.Timer) {
 	if timerConf.Tick <= 0 {
@@ -19,6 +48,9 @@ func RunTimer(name string, timerConf *conf.Timer) {
 	ticker := time.NewTicker(time.Duration(timerConf.Tick) * time.Second)
 	logger.Printf("INFO (_) [timer] starting timer %s", name)
 	for _ = range(ticker.C) {
+		if isExiting() {
+			break
+		}
 		cmd, out, err := cmdFromConf(&cmdConf, nil, nil)
 		if err != nil {
 			logger.Printf("WARN (_) [timer] create %s command failed: %s", name, err.Error())
@@ -32,6 +64,7 @@ func RunTimer(name string, timerConf *conf.Timer) {
 			logger.Printf("WARN (_) [timer] start %s command failed: %s", name, err.Error())
 			break
 		}
+		//registerProcess(cmd)
 		ch := make(chan error, 1)
 		go func() {
 			err = cmd.Wait()
@@ -47,6 +80,7 @@ func RunTimer(name string, timerConf *conf.Timer) {
 			cmd.Process.Kill()
 			logger.Printf("WARN (_) [timer] %s command execution timeout: %d", name, timeout)
 		}
+		//unregisterProcess(cmd)
 	}
 	ticker = nil
 }
@@ -62,7 +96,11 @@ func RunDaemon(name string, daemonConf *conf.Daemon) {
 		daemonConf.Retries = 0
 	}
 	logger.Printf("INFO (_) [daemon] starting daemon %s", name)
+	cleanupOnExit()
 	for i := 0; i < daemonConf.Retries + 1; i++ {
+		if isExiting() {
+			return
+		}
 		cmd, out, err := cmdFromConf(&cmdConf, nil, nil)
 		if out != nil {
 			out.Close()
@@ -78,10 +116,12 @@ func RunDaemon(name string, daemonConf *conf.Daemon) {
 		}
 		logger.Printf("INFO (_) [daemon] %s started. pid: %d", name, cmd.Process.Pid)
 		t0 := time.Now()
+		registerProcess(cmd)
 		err = cmd.Wait()
+		unregisterProcess(cmd)
 		if err == nil {
 			logger.Printf("WARN (_) [daemon] %s normal exit", name)
-			break
+			return
 		}
 		t1 := time.Now()
 		if t1.Sub(t0) >= time.Duration(daemonConf.Live) * time.Second {
@@ -89,4 +129,42 @@ func RunDaemon(name string, daemonConf *conf.Daemon) {
 		}
 	}
 	logger.Printf("WARN (_) [daemon] %s give up after %d retries", name, daemonConf.Retries)
+}
+
+func cleanupOnExit() {
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
+	go func() {
+		sig := <- sigChan
+		logger.Printf("INFO (_) [daemon] got signal %s", sig.String())
+		cleanupProcesses()
+		logger.Printf("INFO (_) [daemon] cleaning up done")
+		os.Exit(0)
+	}()
+}
+
+func cleanupProcesses() {
+	logger.Printf("INFO (_) [daemon] cleaning up process")
+	taskProcessesLock.Lock()
+	_isExiting = true
+	taskProcessesLock.Unlock()
+
+	for i := 0; i < 10; i++ { // in about 100ms
+		taskProcessesLock.Lock()
+		for _, cmd := range(taskProcesses) {
+			if cmd.Process.Signal(syscall.SIGTERM) != nil {
+				delete(taskProcesses, cmd.Process.Pid)
+				logger.Printf("INFO (_) [daemon] process %d terminated", cmd.Process.Pid)
+			}
+		}
+		taskProcessesLock.Unlock()
+		time.Sleep(10 * time.Millisecond)
+	}
+	for _, cmd := range(taskProcesses) {
+		logger.Printf("INFO (_) [daemon] killing process %d ", cmd.Process.Pid)
+		cmd.Process.Kill()
+	}
+	taskProcessesLock.Lock()
+	taskProcesses = map[int]*exec.Cmd{}
+	taskProcessesLock.Unlock()
 }
