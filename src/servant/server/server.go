@@ -90,22 +90,29 @@ func parseUriPath(path string) (resource, group, item, tail string) {
 	return
 }
 
-var paramRe, _ = regexp.Compile(`\${[a-zA-Z_]\w?(?:\.[a-zA-Z_]\w*)?}`)
-
-var globalParams = map[string]string {
-}
+var paramRe, _ = regexp.Compile(`\${[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)?}`)
+var paramNameRe, _ = regexp.Compile(`^[a-zA-Z]\w+$`)
 
 func requestParams(req *http.Request) func(string)string {
 	// ${aaa} ${foo.bar} ${_env.PATH}
-	q := req.URL.Query()
+	q := req.URL.Query() // should be out of the closure, to avoid parse query many times
 	return func(k string) string {
-		if v, ok := globalParams[k]; ok {
+		if v, ok := GetGlobalParam(k); ok {
 			return v
 		}
-		if ok, _ := regexp.MatchString(`^[a-zA-Z]\w+$`, k); ok {
-			return q.Get(k)
+		if req != nil {
+			if ok := paramNameRe.MatchString(k); ok {
+				return q.Get(k)
+			}
 		}
 		return ""
+	}
+}
+
+func globalParam() func(string)string {
+	return func(k string) string {
+		v, _ := GetGlobalParam(k)
+		return v
 	}
 }
 

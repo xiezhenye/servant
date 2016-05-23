@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"strconv"
 	"io"
+	"io/ioutil"
 )
 
 var argRe, _ = regexp.Compile(`("[^"]*"|'[^']*'|[^\s]+)`)
@@ -126,22 +127,23 @@ func (self CommandServer) serveCommand(cmdConf *conf.Command) {
 }
 
 
-func cmdFromConf(cmdConf *conf.Command, params func(string)string, input io.ReadCloser) (*exec.Cmd, error) {
-	var cmd *exec.Cmd
+func cmdFromConf(cmdConf *conf.Command, params func(string)string, input io.ReadCloser) (cmd *exec.Cmd, out io.ReadCloser, err error) {
 	switch cmdConf.Lang {
 	case "exec":
 		cmd = getCmdExec(cmdConf.Code, params)
 	case "bash", "":
 		cmd = getCmdBash(cmdConf.Code, params)
 	default:
-		return nil, NewServantError(http.StatusInternalServerError, "unknown language")
+		err = NewServantError(http.StatusInternalServerError, "unknown language")
+		return
 	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{}
 	cmd.Dir = "/"
 	if cmdConf.User != "" {
-		err := setCmdUser(cmd, cmdConf.User)
+		err = setCmdUser(cmd, cmdConf.User)
 		if err != nil {
-			return nil, NewServantError(http.StatusInternalServerError, "set user failed: %s", err.Error())
+			err = NewServantError(http.StatusInternalServerError, "set user failed: %s", err.Error())
+			return
 		}
 	}
 	cmd.Stdin = input
@@ -153,8 +155,14 @@ func cmdFromConf(cmdConf *conf.Command, params func(string)string, input io.Read
 		cmd.SysProcAttr.Foreground = false
 		cmd.Stdout = nil
 		cmd.Stdin = nil
+	} else {
+		out, err = cmd.StdoutPipe()
+		if err != nil {
+			err = NewServantError(http.StatusInternalServerError, "pipe stdout failed: %s", err.Error())
+			return
+		}
 	}
-	return cmd, nil
+	return cmd, out, nil
 }
 
 func (self CommandServer) execCommand(cmdConf *conf.Command) (outBuf []byte, err error) {
@@ -162,9 +170,12 @@ func (self CommandServer) execCommand(cmdConf *conf.Command) (outBuf []byte, err
 	if self.req.Method == "POST" {
 		input = self.req.Body
 	}
-	cmd, err := cmdFromConf(cmdConf, requestParams(self.req), input)
+	cmd, out, err := cmdFromConf(cmdConf, requestParams(self.req), input)
 	if err != nil {
 		return
+	}
+	if out != nil {
+		defer out.Close()
 	}
 	err = cmd.Start()
 	if err != nil {
@@ -184,8 +195,8 @@ func (self CommandServer) execCommand(cmdConf *conf.Command) (outBuf []byte, err
 	} else {
 		ch := make(chan error, 1)
 		go func() {
-			if cmd.Stdout != nil {
-				outBuf, err = cmd.Output()
+			if out != nil {
+				outBuf, err = ioutil.ReadAll(out)
 				if err != nil {
 					ch <- err
 					return

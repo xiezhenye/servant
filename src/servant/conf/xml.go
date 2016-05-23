@@ -7,6 +7,7 @@ import (
 	"strings"
 	"path"
 	"math"
+	"bytes"
 )
 
 type XConfig struct {
@@ -116,29 +117,31 @@ type XUserDatabases struct {
 	Name   string   `xml:"id,attr"`
 }
 
-func XConfigFromData(data []byte) (*XConfig, error) {
+func XConfigFromData(data []byte, entities map[string]string) (*XConfig, error) {
 	ret := XConfig{}
-	err := xml.Unmarshal(data, &ret)
+	decoder := xml.NewDecoder(bytes.NewReader(data))
+	decoder.Entity = entities
+	err := decoder.Decode(&ret)
 	if err != nil {
 		return nil, err
 	}
 	return &ret, nil
 }
 
-func XConfigFromReader(reader io.Reader) (*XConfig, error) {
+func XConfigFromReader(reader io.Reader, entities map[string]string) (*XConfig, error) {
 	data, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return nil, err
 	}
-	return XConfigFromData(data)
+	return XConfigFromData(data, entities)
 }
 
-func XConfigFromFile(path string) (*XConfig, error) {
+func XConfigFromFile(path string, entities map[string]string) (*XConfig, error) {
 	reader, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	return XConfigFromReader(reader)
+	return XConfigFromReader(reader, entities)
 }
 
 func (conf *XConfig) ToConfig() *Config {
