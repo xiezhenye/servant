@@ -33,13 +33,15 @@ func TestConfig(t *testing.T) {
         </dir>
     </files>
     <user id="db_ha">
-        <key>s4xuF@P0qj28fwL</key>
+        <key>&_var.foo;</key>
         <host>10.200.180.11 </host>
         <files id="db1" />
         <commands id="db1" />
     </user>
 </config>`
-	xconf, err := XConfigFromData([]byte(data))
+	xconf, err := XConfigFromData([]byte(data), map[string]string{
+		"_var.foo": "FOO",
+	})
 	if err != nil {
 		t.Errorf("parse error: %s", err)
 		return
@@ -123,11 +125,14 @@ func TestConfig(t *testing.T) {
 	if binlog1.Allows[1] != "GET" {
 		t.Errorf("allows 0 not get")
 	}
+	if conf.Users["db_ha"].Key != "FOO" {
+		t.Error("entity parse wrong")
+	}
 	//fmt.Printf("%v\n", conf)
 }
 
 func TestFile(t *testing.T) {
-	conf, err := XConfigFromFile("../../../conf/example.xml")
+	conf, err := XConfigFromFile("../../../conf/example.xml", nil)
 	if err != nil {
 		t.Errorf("parse error: %s", err)
 	}

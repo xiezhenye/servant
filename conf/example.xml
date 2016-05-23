@@ -55,15 +55,16 @@
             <sql>select ${v2} v;</sql>
         </query>
     </database>
-    <!--
+<!--
     <timer id="xx" tick="5" deadline="5" lang="bash">
         <code><![CDATA[
              date >>/tmp/timer.log
         ]]></code>
     </timer>
-    <daemon id="yy" retry="100" lang="bash">
+-->
+    <daemon id="yy" retries="100" lang="bash">
         <code>sleep 2465</code>
-    </daemon>-->
+    </daemon>
     <user id="db_ha">
         <key>bTdFOWk0i92jMRjDNAh5PzZ5xM4hA3</key>
         <host>10.200.180.2/24</host>

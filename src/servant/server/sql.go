@@ -46,7 +46,7 @@ func (self DatabaseServer) serve() {
 		self.ErrorEnd(http.StatusNotFound, "query not found")
 		return
 	}
-
+	//dsn := replaceCmdParams(dbConf.Dsn, globalParams())
 	db, err := sql.Open(dbConf.Driver, dbConf.Dsn)
 	if err != nil {
 		self.ErrorEnd(http.StatusInternalServerError, "driver init failed")

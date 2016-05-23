@@ -50,3 +50,14 @@ func GetGlobalParam(k string) (string, bool) {
 	return ret, ok
 }
 
+func CloneGlobalParams() map[string]string {
+	ret := make(map[string]string)
+	varsLock.Lock()
+	for k, v := range(globalParams) {
+		ret[k] = v
+	}
+	varsLock.Unlock()
+	return ret
+}
+
+
