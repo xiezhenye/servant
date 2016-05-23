@@ -19,10 +19,13 @@ func RunTimer(name string, timerConf *conf.Timer) {
 	ticker := time.NewTicker(time.Duration(timerConf.Tick) * time.Second)
 	logger.Printf("INFO (_) [timer] starting timer %s", name)
 	for _ = range(ticker.C) {
-		cmd, err := cmdFromConf(&cmdConf, nil, nil)
+		cmd, out, err := cmdFromConf(&cmdConf, nil, nil)
 		if err != nil {
 			logger.Printf("WARN (_) [timer] create %s command failed: %s", name, err.Error())
 			break
+		}
+		if out != nil {
+			out.Close()
 		}
 		err = cmd.Start()
 		if err != nil {
@@ -60,7 +63,10 @@ func RunDaemon(name string, daemonConf *conf.Daemon) {
 	}
 	logger.Printf("INFO (_) [daemon] starting daemon %s", name)
 	for i := 0; i < daemonConf.Retries + 1; i++ {
-		cmd, err := cmdFromConf(&cmdConf, nil, nil)
+		cmd, out, err := cmdFromConf(&cmdConf, nil, nil)
+		if out != nil {
+			out.Close()
+		}
 		if err != nil {
 			logger.Printf("WARN (_) [daemon] create %s command failed: %s", name, err.Error())
 			return

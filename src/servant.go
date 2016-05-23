@@ -21,7 +21,9 @@ func (self *arrayFlags) Set(value string) error {
 
 func main() {
 	var configs arrayFlags
+	var vars arrayFlags
 	flag.Var(&configs, "conf", "config files path")
+	flag.Var(&vars, "var", "vars")
 	flag.Parse()
 	config := conf.Config{}
 	for _, confPath := range(configs) {
@@ -32,6 +34,8 @@ func main() {
 		}
 		xconf.IntoConfig(&config)
 	}
+	server.SetArgVars(vars)
+	server.SetEnvVars()
 	err := server.NewServer(&config).Run()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())

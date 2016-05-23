@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <config>
     <server>
-        <listen>127.0.0.1:2465</listen>
+        <listen>:2465</listen>
         <auth enabled="0">
             <maxTimeDelta>300</maxTimeDelta>
         </auth>
@@ -12,6 +12,10 @@
         <command id="foo" runas="mysql">
             <code>echo "hello world $(whoami)"</code>
         </command>
+        <command id="bar" lang="exec">
+            <code>echo hello "${_arg.bar}" "${_env.bar}"</code>
+        </command>
+ 
         <command id="grep" lang="exec">
             <code>grep hello</code>
         </command>
@@ -51,16 +55,17 @@
             <sql>select ${v2} v;</sql>
         </query>
     </database>
+    <!--
     <timer id="xx" tick="5" deadline="5" lang="bash">
-        <code>
-             date &gt;&gt;/tmp/timer.log
-        </code>
+        <code><![CDATA[
+             date >>/tmp/timer.log
+        ]]></code>
     </timer>
     <daemon id="yy" retry="100" lang="bash">
         <code>sleep 2465</code>
-    </daemon>
+    </daemon>-->
     <user id="db_ha">
-        <key>s4xuF@P0qj28fwL</key>
+        <key>bTdFOWk0i92jMRjDNAh5PzZ5xM4hA3</key>
         <host>10.200.180.2/24</host>
         <files id="db1" />
         <commands id="db1" />
