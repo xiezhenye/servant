@@ -13,7 +13,7 @@ import (
 	"io/ioutil"
 )
 
-var argRe, _ = regexp.Compile(`("[^"]*"|'[^']*'|[^\s]+)`)
+var argRe, _ = regexp.Compile(`("[^"]*"|'[^']*'|[^\s"']+)`)
 
 type CommandServer struct {
 	*Session
@@ -37,8 +37,8 @@ func (self CommandServer) findCommandConfig() *conf.Command {
 	return cmdConf
 }
 
-func getCmdBash(code string, query func(string)string) *exec.Cmd{
-	return exec.Command("bash", "-c", code)
+func getCmdBashArgs(code string, query func(string)string) (string, []string) {
+	return "bash", []string{"-c", code}
 }
 
 func replaceCmdParams(arg string, query func(string)string) string {
@@ -49,8 +49,7 @@ func replaceCmdParams(arg string, query func(string)string) string {
 		return query(s[2:len(s) - 1])
 	})
 }
-
-func getCmdExec(code string, query func(string)string) *exec.Cmd {
+func getCmdExecArgs(code string, query func(string)string) (string, []string) {
 	argsMatches := argRe.FindAllStringSubmatch(code, -1)
 	args := make([]string, 0, 4)
 	for i := 0; i < len(argsMatches); i++ {
@@ -61,7 +60,7 @@ func getCmdExec(code string, query func(string)string) *exec.Cmd {
 		arg = replaceCmdParams(arg, query)
 		args = append(args, arg)
 	}
-	return exec.Command(args[0], args[1:]...)
+	return args[0], args[1:]
 }
 
 func (self CommandServer) serve() {
@@ -128,15 +127,18 @@ func (self CommandServer) serveCommand(cmdConf *conf.Command) {
 
 
 func cmdFromConf(cmdConf *conf.Command, params func(string)string, input io.ReadCloser) (cmd *exec.Cmd, out io.ReadCloser, err error) {
+	var name string
+	var args []string
 	switch cmdConf.Lang {
 	case "exec":
-		cmd = getCmdExec(cmdConf.Code, params)
+		name, args = getCmdExecArgs(cmdConf.Code, params)
 	case "bash", "":
-		cmd = getCmdBash(cmdConf.Code, params)
+		name, args = getCmdBashArgs(cmdConf.Code, params)
 	default:
 		err = NewServantError(http.StatusInternalServerError, "unknown language")
 		return
 	}
+	cmd = exec.Command(name, args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{}
 	cmd.Dir = "/"
 	if cmdConf.User != "" {
@@ -174,6 +176,7 @@ func (self CommandServer) execCommand(cmdConf *conf.Command) (outBuf []byte, err
 	if err != nil {
 		return
 	}
+	self.info("command: %v", cmd.Args)
 	if out != nil {
 		defer out.Close()
 	}

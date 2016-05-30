@@ -91,7 +91,7 @@ func parseUriPath(path string) (resource, group, item, tail string) {
 }
 
 var paramRe, _ = regexp.Compile(`\${[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)?}`)
-var paramNameRe, _ = regexp.Compile(`^[a-zA-Z]\w+$`)
+var paramNameRe, _ = regexp.Compile(`^[a-zA-Z]\w*$`)
 
 func requestParams(req *http.Request) func(string)string {
 	// ${aaa} ${foo.bar} ${_env.PATH}
@@ -119,7 +119,7 @@ func globalParam() func(string)string {
 func (self *Server) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	sess := self.newSession(resp, req)
-	sess.info("+ %s %s %s", req.RemoteAddr, req.Method, req.URL.Path)
+	sess.info("+ %s %s %s", req.RemoteAddr, req.Method, req.URL.String())
 	username, err := sess.auth()
 	if err != nil {
 		sess.ErrorEnd(http.StatusForbidden, "auth failed: %s", err)
