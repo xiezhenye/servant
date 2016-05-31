@@ -33,10 +33,10 @@ $(drivers_file):
 bin/servant:$(arch)/bin/servant
 	cp -r $(arch)/bin .
 
-linux_amd64/bin/servant:$(drivers_file)
+linux_amd64/bin/servant:driver
 	GOOS=linux GOARCH=amd64 GOPATH=$(pwd) GOBIN=$(pwd)/linux_amd64/bin go install src/servant.go
 
-darwin_amd64/bin/servant:$(drivers_file) 
+darwin_amd64/bin/servant:driver
 	GOOS=darwin GOARCH=amd64 GOPATH=$(pwd) GOBIN=$(pwd)/darwin_amd64/bin go install src/servant.go
 
 
@@ -44,15 +44,32 @@ tarball:servant.tar.gz
 
 servant.tar.gz:bin/servant
 	mkdir servant
-	cp -r bin conf README.md servant
+	cp -r bin conf README.md LICENSE servant
 	tar -czf servant.tar.gz servant
 	rm -rf servant
-	
+
+servant-src.tar.gz:driver
+	mkdir servant-src
+	cp -r src conf README.md Makefile LICENSE servant-src
+	find servant-src -name '.git*' -delete
+	tar -czvf servant-src.tar.gz servant-src
+	rm -rf servant-src
+
+rpm:servant-src.tar.gz
+	mkdir -p rpmbuild/{SPECS,SOURCES}
+	cp servant-src.tar.gz rpmbuild/SOURCES
+	cp servant.spec rpmbuild/SPECS
+	rpmbuild --define "_topdir $(pwd)/rpmbuild" -ba rpmbuild/SPECS/servant.spec
+	mv rpmbuild/SRPMS/*.src.rpm .
+	mv rpmbuild/RPMS/x86_64/*.rpm .
+	rm -rf rpmbuild
+
+
 test:
 	GOPATH=$(pwd) go test -coverprofile=c_server.out servant/server
 	GOPATH=$(pwd) go test -coverprofile=c_conf.out servant/conf
 
 clean:
-	rm -rf servant bin pkg/*/servant "$(drivers_file)" servant.tar.gz darwin_amd64 linux_amd64 c_server.out c_conf.out
+	rm -rf servant bin pkg/*/servant "$(drivers_file)" servant.tar.gz servant-src.tar.gz darwin_amd64 linux_amd64 c_server.out c_conf.out
 
 
