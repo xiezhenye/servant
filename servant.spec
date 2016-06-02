@@ -23,6 +23,7 @@ A common agent to execute commands, serve files and so on
 %setup -n %{oname}-src
 
 %build
+%define debug_package %{nil}
 %{__make} linux_amd64/bin/servant
 
 %install
