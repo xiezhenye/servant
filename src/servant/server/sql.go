@@ -47,6 +47,11 @@ func (self DatabaseServer) serve() {
 		return
 	}
 	//dsn := replaceCmdParams(dbConf.Dsn, globalParams())
+	reqParams := requestParams(self.req)
+	if !ValidateParams(queryConf.Validators, reqParams) {
+		self.ErrorEnd(http.StatusBadRequest, "validate params failed")
+		return
+	}
 	db, err := sql.Open(dbConf.Driver, dbConf.Dsn)
 	if err != nil {
 		self.ErrorEnd(http.StatusInternalServerError, "driver init failed")
@@ -54,10 +59,11 @@ func (self DatabaseServer) serve() {
 	}
 	defer db.Close()
 	data := make([]sqlResult, 0, 1)
-	for _, sql := range(queryConf.Sqls) {
-		sql, params := replaceSqlParams(sql, requestParams(self.req))
 
-		result, err := dbQuery(db, sql, params)
+	for _, sql := range(queryConf.Sqls) {
+		sql, sqlParams := replaceSqlParams(sql, reqParams)
+
+		result, err := dbQuery(db, sql, sqlParams)
 		if err != nil {
 			self.ErrorEnd(http.StatusInternalServerError, "query %s failed: %s", sql, err)
 			return
@@ -73,12 +79,12 @@ func (self DatabaseServer) serve() {
 	self.GoodEnd("execution done")
 }
 
-func replaceSqlParams(inSql string, query func(string)string) (outSql string, params []interface{}){
+func replaceSqlParams(inSql string, query ParamFunc) (outSql string, params []interface{}){
 	params = make([]interface{}, 0, 4)
 	return paramRe.ReplaceAllStringFunc(inSql, func(s string) string {
 		var v string = ""
 		if query != nil {
-			v = query(s[2:len(s) - 1])
+			v, _ = query(s[2:len(s) - 1])
 		}
 		params = append(params, v)
 		return "?"

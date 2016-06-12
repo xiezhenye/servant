@@ -6,20 +6,20 @@ import (
 )
 
 func TestReplaceSqlParams(t *testing.T) {
-	p1 := func(k string)string {
+	p1 := func(k string)(string,bool) {
 		if k == "a" {
-			return "1"
+			return "1", true
 		}
-		return ""
+		return "", false
 	}
-	p2 := func(k string)string {
+	p2 := func(k string)(string,bool) {
 		if k == "a" {
-			return "1"
+			return "1", true
 		}
 		if k == "b" {
-			return "2"
+			return "2", true
 		}
-		return ""
+		return "", false
 	}
 
 	s, p := replaceSqlParams("select 1", p1)

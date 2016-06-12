@@ -37,19 +37,21 @@ func (self CommandServer) findCommandConfig() *conf.Command {
 	return cmdConf
 }
 
-func getCmdBashArgs(code string, query func(string)string) (string, []string) {
+func getCmdBashArgs(code string, query ParamFunc) (string, []string) {
 	return "bash", []string{"-c", code}
 }
 
-func replaceCmdParams(arg string, query func(string)string) string {
+// TODO: return error when arg miss
+func replaceCmdParams(arg string, query ParamFunc) string {
 	return paramRe.ReplaceAllStringFunc(arg, func(s string) string {
 		if query == nil {
 			return ""
 		}
-		return query(s[2:len(s) - 1])
+		ret, _ := query(s[2:len(s) - 1])
+		return ret
 	})
 }
-func getCmdExecArgs(code string, query func(string)string) (string, []string) {
+func getCmdExecArgs(code string, query ParamFunc) (string, []string) {
 	argsMatches := argRe.FindAllStringSubmatch(code, -1)
 	args := make([]string, 0, 4)
 	for i := 0; i < len(argsMatches); i++ {
@@ -126,9 +128,12 @@ func (self CommandServer) serveCommand(cmdConf *conf.Command) {
 }
 
 
-func cmdFromConf(cmdConf *conf.Command, params func(string)string, input io.ReadCloser) (cmd *exec.Cmd, out io.ReadCloser, err error) {
+func cmdFromConf(cmdConf *conf.Command, params ParamFunc, input io.ReadCloser) (cmd *exec.Cmd, out io.ReadCloser, err error) {
 	var name string
 	var args []string
+	if !ValidateParams(cmdConf.Validators, params) {
+		return nil, nil, NewServantError(http.StatusBadRequest, "validate params failed")
+	}
 	switch cmdConf.Lang {
 	case "exec":
 		name, args = getCmdExecArgs(cmdConf.Code, params)

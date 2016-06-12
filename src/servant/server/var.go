@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"os"
 	"sync"
+	"servant/conf"
 )
 
 var globalParams = map[string]string {}
@@ -60,4 +61,19 @@ func CloneGlobalParams() map[string]string {
 	return ret
 }
 
-
+func ValidateParams(vs conf.Validators, params ParamFunc) bool {
+	if vs == nil {
+		return true
+	}
+	for k, vd := range vs {
+		v, ok := params(k)
+		if !ok {
+			return false
+		}
+		ret, err := regexp.MatchString(vd.Pattern, v)
+		if err != nil || !ret{
+			return false
+		}
+	}
+	return true
+}

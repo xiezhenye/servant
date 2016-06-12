@@ -39,6 +39,7 @@ type Command struct {
 	Timeout      uint32
 	User		 string
 	Background   bool
+	Validators   Validators
 	Lock         Lock
 }
 
@@ -50,6 +51,7 @@ type Database struct {
 
 type Query struct {
 	Sqls    []string
+	Validators   Validators
 }
 
 type Lock struct {
@@ -63,9 +65,10 @@ type Files struct {
 }
 
 type Dir struct {
-	Root      string
-	Allows    []string
-	Patterns  []string
+	Root       string
+	Allows     []string
+	Patterns   []string
+	Validators Validators
 }
 
 type Timer struct {
@@ -83,3 +86,11 @@ type Daemon struct {
 	Retries   int
 	Live      int
 }
+
+type Validator struct {
+	Name     string
+	//class  string
+	Pattern  string
+}
+
+type Validators map[string]Validator

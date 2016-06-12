@@ -8,6 +8,8 @@ import (
 	"path"
 	"math"
 	"bytes"
+	"path/filepath"
+	"fmt"
 )
 
 type XConfig struct {
@@ -54,6 +56,7 @@ type XCommand struct {
 	Timeout      uint32  `xml:"timeout,attr"`
 	User         string  `xml:"runas,attr"`
 	Background   bool    `xml:"background,attr"`
+	Validator    []XValidator `xml:"validator"`
 	Lock         XLock   `xml:"lock"`
 }
 
@@ -65,8 +68,9 @@ type XDatabase struct {
 }
 
 type XQuery struct {
-	Name    string   `xml:"id,attr"`
-	Sqls    []string `xml:"sql"`
+	Name      string   `xml:"id,attr"`
+	Sqls      []string `xml:"sql"`
+	Validator []XValidator `xml:"validator"`
 }
 
 type XLock struct {
@@ -85,6 +89,7 @@ type XDir struct {
 	Root      string    `xml:"root"`
 	Allows    []string  `xml:"allow"`
 	Patterns  []string  `xml:"pattern"`
+	Validator []XValidator `xml:"validator"`
 }
 
 type XTimer struct {
@@ -115,6 +120,12 @@ type XUserCommands struct {
 
 type XUserDatabases struct {
 	Name   string   `xml:"id,attr"`
+}
+
+type XValidator struct {
+	Name     string `xml:"name,attr"`
+	//class  string
+	Pattern  string `xml:",chardata"`
 }
 
 func XConfigFromData(data []byte, entities map[string]string) (*XConfig, error) {
@@ -174,6 +185,7 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 				Root: path.Clean(strings.TrimSpace(xdir.Root)),
 				Allows: make([]string, 0, 4),
 				Patterns: make([]string, 0, 4),
+				Validators: xvalidatorsToValidators(xdir.Validator),
 			}
 			for _, method := range(xdir.Allows) {
 				dir.Allows = append(dir.Allows, strings.ToUpper(strings.TrimSpace(method)))
@@ -209,6 +221,7 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 					Timeout: command.Lock.Timeout,
 					Wait: command.Lock.Wait,
 				},
+				Validators: xvalidatorsToValidators(command.Validator),
 			}
 		}
 	}
@@ -221,7 +234,10 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 			Queries: make(map[string]*Query),
 		}
 		for _, query := range(database.Queries) {
-			ret.Databases[dname].Queries[query.Name] = &Query{ Sqls: query.Sqls }
+			ret.Databases[dname].Queries[query.Name] = &Query{
+				Sqls: query.Sqls,
+				Validators: xvalidatorsToValidators(query.Validator),
+			}
 		}
 	}
 
@@ -279,4 +295,59 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 		ret.Users[uname] = u
 	}
 }
+/*
+type LoadConfigError struct {
+	paths  []string
+	errors []error
+}*/
 
+
+func xvalidatorsToValidators(xs []XValidator) Validators {
+	ret := make(map[string]Validator)
+	for _, x := range xs {
+		ret[x.Name] = Validator{
+			Name: x.Name,
+			Pattern: x.Pattern,
+		}
+	}
+	return ret
+}
+
+type LoadConfigError struct {
+	Path string
+	Err error
+}
+func (self LoadConfigError) Error() string {
+	return fmt.Sprintf("load %s failed: %s", self.Path, self.Err.Error())
+}
+
+func LoadXmlConfig(files, dirs []string, params map[string]string) (config Config, err error) {
+	for _, confPath := range files {
+		xconf, err := XConfigFromFile(confPath, params)
+		if err != nil {
+			return config, LoadConfigError{ Path: confPath, Err: err }
+		}
+		xconf.IntoConfig(&config)
+	}
+	for _, confDirPath := range dirs {
+		filesInfo, err := ioutil.ReadDir(confDirPath)
+		if err != nil {
+			return config, LoadConfigError{ Path: confDirPath, Err: err }
+		}
+		for _, fileInfo := range filesInfo {
+			filename := fileInfo.Name()
+			if strings.HasSuffix(fileInfo.Name(), ".conf") {
+				if fileInfo.IsDir() {
+					continue
+				}
+				confPath := filepath.Join(confDirPath, filename)
+				xconf, err := XConfigFromFile(confPath, params)
+				if err != nil {
+					return config, LoadConfigError{ Path: confPath, Err: err }
+				}
+				xconf.IntoConfig(&config)
+			}
+		}
+	}
+	return
+}

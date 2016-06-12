@@ -6,8 +6,8 @@ import (
 )
 
 func TestGetCmdExecArgs(t *testing.T) {
-	name, args := getCmdExecArgs(`test a b ${a} ${b} '' "" 'a b' "c d${c}"`, func(string)string{
-		return "X"
+	name, args := getCmdExecArgs(`test a b ${a} ${b} '' "" 'a b' "c d${c}"`, func(string)(string, bool){
+		return "X", true
 	})
 	if name != "test" {
 		t.Error("name != test")

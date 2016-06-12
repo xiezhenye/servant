@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"errors"
 	"strconv"
+	"path/filepath"
 )
 
 type FileServer struct {
@@ -181,8 +182,14 @@ func (self FileServer) serve() {
 		self.ErrorEnd(http.StatusForbidden, err.Error())
 		return
 	}
-	filePath := path.Clean(dirConf.Root + relPath)
-	if ! strings.HasPrefix(filePath, path.Clean(dirConf.Root) + "/") {
+	params := requestParams(self.req)
+	if !ValidateParams(dirConf.Validators, params) {
+		self.ErrorEnd(http.StatusBadRequest, "validate params failed")
+		return
+	}
+	rootDir := replaceCmdParams(dirConf.Root, params)
+	filePath := path.Clean(filepath.Join(rootDir, relPath))
+	if ! strings.HasPrefix(filePath, path.Clean(rootDir) + "/") {
 		self.ErrorEnd(http.StatusForbidden, "attempt to %s out of root: %s", method, relPath)
 		return
 	}
