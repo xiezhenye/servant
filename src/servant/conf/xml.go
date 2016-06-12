@@ -56,7 +56,7 @@ type XCommand struct {
 	Timeout      uint32  `xml:"timeout,attr"`
 	User         string  `xml:"runas,attr"`
 	Background   bool    `xml:"background,attr"`
-	Validator    []XValidator `xml:"validator"`
+	Validator    []XValidator `xml:"validate"`
 	Lock         XLock   `xml:"lock"`
 }
 
@@ -70,7 +70,7 @@ type XDatabase struct {
 type XQuery struct {
 	Name      string   `xml:"id,attr"`
 	Sqls      []string `xml:"sql"`
-	Validator []XValidator `xml:"validator"`
+	Validator []XValidator `xml:"validate"`
 }
 
 type XLock struct {
@@ -89,7 +89,7 @@ type XDir struct {
 	Root      string    `xml:"root"`
 	Allows    []string  `xml:"allow"`
 	Patterns  []string  `xml:"pattern"`
-	Validator []XValidator `xml:"validator"`
+	Validator []XValidator `xml:"validate"`
 }
 
 type XTimer struct {
