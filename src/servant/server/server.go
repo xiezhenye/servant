@@ -50,6 +50,7 @@ func NewServer(config *conf.Config) *Server {
 		nextSessionId:  0,
 		resources:      make(map[string]HandlerFactory),
 	}
+	ret.loadVars()
 	if config.Log != "" {
 		file, err := os.OpenFile(config.Log, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0664)
 		if err == nil {
@@ -61,7 +62,17 @@ func NewServer(config *conf.Config) *Server {
 	ret.resources["commands"] = NewCommandServer
 	ret.resources["files"] = NewFileServer
 	ret.resources["databases"] = NewDatabaseServer
+	ret.resources["vars"] = NewVarServer
 	return ret
+}
+
+func (self *Server) loadVars() {
+	for vgn, vg := range self.config.Vars {
+		for vin, vi := range vg.Vars {
+			globalKey := vgn + "." + vin
+			SetGlobalParam(globalKey, vi.Value)
+		}
+	}
 }
 
 func (self *Server) newSession(resp http.ResponseWriter, req *http.Request) *Session {
