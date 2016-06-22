@@ -207,6 +207,7 @@ func (self *Server) Run() error {
 	}
 	self.StartDaemons()
 	self.StartTimers()
+	logger.Printf("INFO (_) [server] starting listen at %s", s.Addr)
 	return s.ListenAndServe()
 }
 
