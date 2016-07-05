@@ -352,6 +352,9 @@ func (self LoadConfigError) Error() string {
 
 func LoadXmlConfig(files, dirs []string, params map[string]string) (config Config, err error) {
 	for _, confPath := range files {
+		confPath, _ = filepath.Abs(confPath)
+		params["__file__"] = confPath
+		params["__dir__"] = path.Dir(confPath)
 		xconf, err := XConfigFromFile(confPath, params)
 		if err != nil {
 			return config, LoadConfigError{ Path: confPath, Err: err }
@@ -370,6 +373,9 @@ func LoadXmlConfig(files, dirs []string, params map[string]string) (config Confi
 					continue
 				}
 				confPath := filepath.Join(confDirPath, filename)
+				confPath, _ = filepath.Abs(confPath)
+				params["__file__"] = confPath
+				params["__dir__"] = path.Dir(confPath)
 				xconf, err := XConfigFromFile(confPath, params)
 				if err != nil {
 					return config, LoadConfigError{ Path: confPath, Err: err }
