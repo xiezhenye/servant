@@ -19,6 +19,7 @@ type XConfig struct {
 	Commands   []XCommands `xml:"commands"`
 	Files      []XFiles    `xml:"files"`
 	Databases  []XDatabase `xml:"database"`
+	Vars       []XVars     `xml:"vars"`
 	Timers     []XTimer    `xml:"timer"`
 	Daemons    []XDaemon   `xml:"daemon"`
 
@@ -90,6 +91,18 @@ type XDir struct {
 	Allows    []string  `xml:"allow"`
 	Patterns  []string  `xml:"pattern"`
 	Validator []XValidator `xml:"validate"`
+}
+
+type XVars struct {
+	Name    string   `xml:"id,attr"`
+	Vars    []XVar   `xml:"var"`
+}
+
+type XVar struct {
+	Name       string       `xml:"id,attr"`
+	Value      string       `xml:"value"`
+	Readonly   bool         `xml:"readonly,attr"`
+	Patterns   []string     `xml:"pattern"`
 }
 
 type XTimer struct {
@@ -174,12 +187,12 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 	}
 
 	ret.Files = make(map[string]*Files)
-	for _, file := range(conf.Files) {
+	for _, file := range conf.Files {
 		fname := file.Name
 		ret.Files[fname] = &Files{
 			Dirs: make(map[string]*Dir),
 		}
-		for _, xdir := range(file.Dirs) {
+		for _, xdir := range file.Dirs {
 			dname := xdir.Name
 			dir := &Dir{
 				Root: path.Clean(strings.TrimSpace(xdir.Root)),
@@ -197,12 +210,12 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 		}
 	}
 	ret.Commands = make(map[string]*Commands)
-	for _, commands := range(conf.Commands) {
+	for _, commands := range conf.Commands {
 		csname := commands.Name
 		ret.Commands[csname] = &Commands{
 			Commands: make(map[string]*Command),
 		}
-		for _, command := range(commands.Commands) {
+		for _, command := range commands.Commands {
 			cname := command.Name
 			if command.Timeout == 0 {
 				command.Timeout = math.MaxUint32
@@ -226,14 +239,14 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 		}
 	}
 	ret.Databases = make(map[string]*Database)
-	for _, database := range(conf.Databases) {
+	for _, database := range conf.Databases {
 		dname := database.Name
 		ret.Databases[dname] = &Database{
 			Dsn: database.Dsn,
 			Driver: database.Driver,
 			Queries: make(map[string]*Query),
 		}
-		for _, query := range(database.Queries) {
+		for _, query := range database.Queries {
 			ret.Databases[dname].Queries[query.Name] = &Query{
 				Sqls: query.Sqls,
 				Validators: xvalidatorsToValidators(query.Validator),
@@ -241,8 +254,24 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 		}
 	}
 
+	ret.Vars = make(map[string]*Vars)
+	for _, vars := range conf.Vars {
+		vname := vars.Name
+		ret.Vars[vname] = &Vars {
+			Vars: make(map[string]*Var),
+		}
+		for _, v := range vars.Vars {
+			ret.Vars[vname].Vars[v.Name] = &Var{
+				Value: v.Value,
+				Patterns: v.Patterns,
+				Readonly: v.Readonly,
+			}
+
+		}
+	}
+
 	ret.Daemons = make(map[string]*Daemon)
-	for _, daemon := range(conf.Daemons) {
+	for _, daemon := range conf.Daemons  {
 		if daemon.Live <= 0 {
 			daemon.Live = math.MaxUint32
 		}
@@ -256,7 +285,7 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 	}
 
 	ret.Timers = make(map[string]*Timer)
-	for _, timer := range(conf.Timers) {
+	for _, timer := range conf.Timers {
 		if timer.Deadline <= 0 {
 			timer.Deadline = math.MaxUint32
 		}
@@ -270,7 +299,7 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 	}
 
 	ret.Users = make(map[string]*User)
-	for _, user := range(conf.Users) {
+	for _, user := range conf.Users {
 		uname := user.Name
 		u := &User{
 			Key: strings.TrimSpace(user.Key),
@@ -323,6 +352,9 @@ func (self LoadConfigError) Error() string {
 
 func LoadXmlConfig(files, dirs []string, params map[string]string) (config Config, err error) {
 	for _, confPath := range files {
+		confPath, _ = filepath.Abs(confPath)
+		params["__file__"] = confPath
+		params["__dir__"] = path.Dir(confPath)
 		xconf, err := XConfigFromFile(confPath, params)
 		if err != nil {
 			return config, LoadConfigError{ Path: confPath, Err: err }
@@ -341,6 +373,9 @@ func LoadXmlConfig(files, dirs []string, params map[string]string) (config Confi
 					continue
 				}
 				confPath := filepath.Join(confDirPath, filename)
+				confPath, _ = filepath.Abs(confPath)
+				params["__file__"] = confPath
+				params["__dir__"] = path.Dir(confPath)
 				xconf, err := XConfigFromFile(confPath, params)
 				if err != nil {
 					return config, LoadConfigError{ Path: confPath, Err: err }

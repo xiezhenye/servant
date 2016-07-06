@@ -22,6 +22,7 @@ Servant config file is in xml, may looks like this;
             <auth enabled="0">
                 <maxTimeDelta>300</maxTimeDelta>
             </auth>
+            <log>servant.log</log>
         </server>
 
         <commands id="db1">
@@ -76,6 +77,10 @@ can be 0 or 1. When authorization disabled, `user` config has no use.
 
 Element `server/auth/maxTimeDelta`:<br />
 Max time delta between servant server and client allowed.
+
+#### `server/log`
+
+Log file path. If not set, log will be writen to stdout.
 
 ### resources group elements
 

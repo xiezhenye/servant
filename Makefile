@@ -34,10 +34,10 @@ bin/servant:$(arch)/bin/servant
 	cp -r $(arch)/bin .
 
 linux_amd64/bin/servant:driver
-	GOOS=linux GOARCH=amd64 GOPATH=$(pwd) GOBIN=$(pwd)/linux_amd64/bin go install src/servant.go
+	GOOS=linux GOARCH=amd64 GOPATH=$(pwd) CGO_ENABLED=1 GOBIN=$(pwd)/linux_amd64/bin go install -v src/servant.go
 
 darwin_amd64/bin/servant:driver
-	GOOS=darwin GOARCH=amd64 GOPATH=$(pwd) GOBIN=$(pwd)/darwin_amd64/bin go install src/servant.go
+	GOOS=darwin GOARCH=amd64 GOPATH=$(pwd) CGO_ENABLED=1 GOBIN=$(pwd)/darwin_amd64/bin go install -v src/servant.go
 
 
 tarball:servant.tar.gz
@@ -66,8 +66,8 @@ rpm:servant-src.tar.gz
 
 
 test:
-	GOPATH=$(pwd) go test -coverprofile=c_server.out servant/server
-	GOPATH=$(pwd) go test -coverprofile=c_conf.out servant/conf
+	GOPATH=$(pwd) go test -v -coverprofile=c_server.out servant/server
+	GOPATH=$(pwd) go test -v -coverprofile=c_conf.out servant/conf
 
 clean:
 	rm -rf servant bin pkg/*/servant "$(drivers_file)" servant.tar.gz servant-src.tar.gz darwin_amd64 linux_amd64 rpmbuild servant-src c_server.out c_conf.out *.rpm

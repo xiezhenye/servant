@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"io"
 	"io/ioutil"
+	"strings"
 )
 
 var argRe, _ = regexp.Compile(`("[^"]*"|'[^']*'|[^\s"']+)`)
@@ -134,11 +135,15 @@ func cmdFromConf(cmdConf *conf.Command, params ParamFunc, input io.ReadCloser) (
 	if !ValidateParams(cmdConf.Validators, params) {
 		return nil, nil, NewServantError(http.StatusBadRequest, "validate params failed")
 	}
+	code := strings.TrimSpace(cmdConf.Code)
+	if code == "" {
+		return nil, nil, NewServantError(http.StatusInternalServerError, "command code is empty")
+	}
 	switch cmdConf.Lang {
 	case "exec":
-		name, args = getCmdExecArgs(cmdConf.Code, params)
+		name, args = getCmdExecArgs(code, params)
 	case "bash", "":
-		name, args = getCmdBashArgs(cmdConf.Code, params)
+		name, args = getCmdBashArgs(code, params)
 	default:
 		err = NewServantError(http.StatusInternalServerError, "unknown language")
 		return

@@ -13,7 +13,7 @@
             <code>echo "hello world $(whoami)"</code>
         </command>
         <command id="bar" lang="exec">
-            <code>echo hello "${_arg.bar}" "${_env.bar}"</code>
+            <code>echo hello "${_arg.bar}" "${_env.bar}" &__file__; &__dir__;</code>
         </command>
  
         <command id="grep" lang="exec">

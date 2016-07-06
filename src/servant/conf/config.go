@@ -6,6 +6,7 @@ type Config struct {
 	Commands   map[string]*Commands
 	Files      map[string]*Files
 	Databases  map[string]*Database
+	Vars       map[string]*Vars
 	Timers     map[string]*Timer
 	Daemons    map[string]*Daemon
 
@@ -69,6 +70,16 @@ type Dir struct {
 	Allows     []string
 	Patterns   []string
 	Validators Validators
+}
+
+type Vars struct {
+	Vars map[string]*Var
+}
+
+type Var struct {
+	Value    string
+	Readonly bool
+	Patterns []string
 }
 
 type Timer struct {
