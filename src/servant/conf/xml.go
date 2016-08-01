@@ -103,7 +103,7 @@ type XVar struct {
 	Value      string       `xml:"value"`
 	Readonly   bool         `xml:"readonly,attr"`
 	Patterns   []string     `xml:"pattern"`
-	Expand     bool         `xml:"expand"`
+	Expand     bool         `xml:"expand,attr"`
 }
 
 type XTimer struct {
