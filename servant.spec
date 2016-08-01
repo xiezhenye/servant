@@ -6,8 +6,8 @@
 
 Summary: A common agent to execute commands, serve files and so on
 Name: servant
-Version: 0.15
-Release: 2%{?dist}
+Version: 0.16
+Release: 3%{?dist}
 License: APL
 Group: Applications/System
 URL: http://github.com/xiezhenye/servant
