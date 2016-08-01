@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"fmt"
 	"os"
+	"net/url"
 )
 
 const ServantErrHeader = "X-Servant-Err"
@@ -107,9 +108,26 @@ type ParamFunc func(string)(string, bool)
 
 func requestParams(req *http.Request) ParamFunc {
 	// ${aaa} ${foo.bar} ${_env.PATH}
-	q := req.URL.Query() // should be out of the closure, to avoid parse query many times
-	return func(k string) (string, bool) {
+	var q url.Values // should be out of the closure, to avoid parse query many times
+	if req != nil {
+		q = req.URL.Query()
+	}
+	var ret func(k string) (string, bool)
+	d := 0
+	ret = func(k string) (string, bool) {
 		if v, ok := GetGlobalParam(k); ok {
+			// only global params can be expanded
+			if GetVarCanExpand(k) {
+				d++
+				if d > MaxVarExpandDepth {
+					return "", false
+				}
+				var exists bool
+				v, exists = replaceCmdParams(v, ret)
+				if !exists {
+					return "", false
+				}
+			}
 			return v, true
 		}
 		if req == nil {
@@ -125,6 +143,7 @@ func requestParams(req *http.Request) ParamFunc {
 		v := vs[0]
 		return v, true
 	}
+	return ret
 }
 
 

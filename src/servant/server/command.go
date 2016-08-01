@@ -42,7 +42,6 @@ func getCmdBashArgs(code string, query ParamFunc) (string, []string) {
 	return "bash", []string{"-c", code}
 }
 
-// TODO: return error when arg miss
 func replaceCmdParams(arg string, query ParamFunc) (string, bool) {
 	var exists = true
 	ret := paramRe.ReplaceAllStringFunc(arg, func(s string) string {
@@ -197,7 +196,8 @@ func (self CommandServer) execCommand(cmdConf *conf.Command) (outBuf []byte, err
 	if self.req.Method == "POST" {
 		input = self.req.Body
 	}
-	cmd, out, err := cmdFromConf(cmdConf, requestParams(self.req), input)
+	params := requestParams(self.req)
+	cmd, out, err := cmdFromConf(cmdConf, params, input)
 	if err != nil {
 		return
 	}

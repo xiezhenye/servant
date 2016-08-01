@@ -103,6 +103,7 @@ type XVar struct {
 	Value      string       `xml:"value"`
 	Readonly   bool         `xml:"readonly,attr"`
 	Patterns   []string     `xml:"pattern"`
+	Expand     bool         `xml:"expand"`
 }
 
 type XTimer struct {
@@ -267,8 +268,8 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 				Value: v.Value,
 				Patterns: v.Patterns,
 				Readonly: v.Readonly,
+				Expand: v.Expand,
 			}
-
 		}
 	}
 

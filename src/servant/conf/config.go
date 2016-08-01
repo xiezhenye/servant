@@ -80,6 +80,7 @@ type Var struct {
 	Value    string
 	Readonly bool
 	Patterns []string
+	Expand   bool
 }
 
 type Timer struct {

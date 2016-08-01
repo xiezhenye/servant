@@ -121,6 +121,26 @@ func GetGlobalParam(k string) (string, bool) {
 	return ret, ok
 }
 
+var paramsCanExpand = map[string]bool{}
+const MaxVarExpandDepth = 10
+func GetVarCanExpand(k string) bool {
+	varsLock.Lock()
+	ret, exists := paramsCanExpand[k]
+	varsLock.Unlock()
+	return ret && exists
+}
+
+func SetVarCanExpand(k string, b bool) {
+	varsLock.Lock()
+	if b {
+		paramsCanExpand[k] = true
+	} else {
+		delete(paramsCanExpand, k)
+	}
+	varsLock.Unlock()
+}
+
+
 func CloneGlobalParams() map[string]string {
 	ret := make(map[string]string)
 	varsLock.Lock()
