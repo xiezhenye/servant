@@ -123,6 +123,7 @@ func GetGlobalParam(k string) (string, bool) {
 
 var paramsCanExpand = map[string]bool{}
 const MaxVarExpandDepth = 10
+
 func GetVarCanExpand(k string) bool {
 	varsLock.Lock()
 	ret, exists := paramsCanExpand[k]

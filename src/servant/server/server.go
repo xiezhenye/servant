@@ -72,6 +72,9 @@ func (self *Server) loadVars() {
 		for vin, vi := range vg.Vars {
 			globalKey := vgn + "." + vin
 			SetGlobalParam(globalKey, vi.Value)
+			if vi.Expand {
+				SetVarCanExpand(globalKey, true)
+			}
 		}
 	}
 }
