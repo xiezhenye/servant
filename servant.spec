@@ -5,9 +5,9 @@
 %define _docdir %{_prefix}/doc
 
 Summary: A common agent to execute commands, serve files and so on
-Name: yz-servant
-Version: 0.14
-Release: 1%{?dist}
+Name: servant
+Version: 0.15
+Release: 2%{?dist}
 License: APL
 Group: Applications/System
 URL: http://github.com/xiezhenye/servant
