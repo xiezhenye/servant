@@ -160,8 +160,10 @@ func XConfigFromReader(reader io.Reader, entities map[string]string) (*XConfig, 
 	return XConfigFromData(data, entities)
 }
 
-func XConfigFromFile(path string, entities map[string]string) (*XConfig, error) {
-	reader, err := os.Open(path)
+func XConfigFromFile(confPath string, entities map[string]string) (*XConfig, error) {
+	entities["__file__"] = confPath
+	entities["__dir__"] = path.Dir(confPath)
+	reader, err := os.Open(confPath)
 	if err != nil {
 		return nil, err
 	}
@@ -374,8 +376,7 @@ func LoadXmlConfig(files, dirs []string, params map[string]string) (config Confi
 				}
 				confPath := filepath.Join(confDirPath, filename)
 				confPath, _ = filepath.Abs(confPath)
-				params["__file__"] = confPath
-				params["__dir__"] = path.Dir(confPath)
+
 				xconf, err := XConfigFromFile(confPath, params)
 				if err != nil {
 					return config, LoadConfigError{ Path: confPath, Err: err }

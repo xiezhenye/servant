@@ -187,7 +187,12 @@ func (self FileServer) serve() {
 		self.ErrorEnd(http.StatusBadRequest, "validate params failed")
 		return
 	}
-	rootDir := replaceCmdParams(dirConf.Root, params)
+
+	rootDir, exists := replaceCmdParams(dirConf.Root, params)
+	if !exists {
+		self.ErrorEnd(http.StatusBadRequest, "some params missing")
+		return
+	}
 	filePath := path.Clean(filepath.Join(rootDir, relPath))
 	if ! strings.HasPrefix(filePath, path.Clean(rootDir) + "/") {
 		self.ErrorEnd(http.StatusForbidden, "attempt to %s out of root: %s", method, relPath)

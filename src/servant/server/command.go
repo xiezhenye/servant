@@ -43,27 +43,37 @@ func getCmdBashArgs(code string, query ParamFunc) (string, []string) {
 }
 
 // TODO: return error when arg miss
-func replaceCmdParams(arg string, query ParamFunc) string {
-	return paramRe.ReplaceAllStringFunc(arg, func(s string) string {
+func replaceCmdParams(arg string, query ParamFunc) (string, bool) {
+	var exists = true
+	ret := paramRe.ReplaceAllStringFunc(arg, func(s string) string {
 		if query == nil {
 			return ""
 		}
-		ret, _ := query(s[2:len(s) - 1])
-		return ret
+		var _ret string
+		var _exists bool
+		_ret, _exists = query(s[2:len(s) - 1])
+		exists = exists && _exists
+		return _ret
 	})
+	return ret, exists
 }
-func getCmdExecArgs(code string, query ParamFunc) (string, []string) {
+
+func getCmdExecArgs(code string, query ParamFunc) (string, []string, bool) {
 	argsMatches := argRe.FindAllStringSubmatch(code, -1)
 	args := make([]string, 0, 4)
+	var exists bool
 	for i := 0; i < len(argsMatches); i++ {
 		arg := argsMatches[i][1]
 		if arg[0] == '\'' || arg[0] == '"' {
 			arg = arg[1 : len(arg)-1]
 		}
-		arg = replaceCmdParams(arg, query)
+		arg, exists = replaceCmdParams(arg, query)
+		if !exists {
+			return "", nil, false
+		}
 		args = append(args, arg)
 	}
-	return args[0], args[1:]
+	return args[0], args[1:], true
 }
 
 func (self CommandServer) serve() {
@@ -141,7 +151,12 @@ func cmdFromConf(cmdConf *conf.Command, params ParamFunc, input io.ReadCloser) (
 	}
 	switch cmdConf.Lang {
 	case "exec":
-		name, args = getCmdExecArgs(code, params)
+		var exists bool
+		name, args, exists = getCmdExecArgs(code, params)
+		if !exists {
+			err = NewServantError(http.StatusBadRequest, "some params missing")
+			return
+		}
 	case "bash", "":
 		name, args = getCmdBashArgs(code, params)
 	default:

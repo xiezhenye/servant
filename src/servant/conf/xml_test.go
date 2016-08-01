@@ -132,9 +132,10 @@ func TestConfig(t *testing.T) {
 }
 
 func TestFile(t *testing.T) {
-	conf, err := XConfigFromFile("../../../conf/example.xml", nil)
+	conf, err := XConfigFromFile("../../../conf/example.xml", make(map[string]string))
 	if err != nil {
 		t.Errorf("parse error: %s", err)
+		return
 	}
 	fmt.Printf("%v\n", conf.ToConfig())
 }
