@@ -51,7 +51,7 @@ func RunTimer(name string, timerConf *conf.Timer) {
 		if isExiting() {
 			break
 		}
-		cmd, out, err := cmdFromConf(&cmdConf, nil, nil)
+		cmd, out, err := cmdFromConf(&cmdConf, requestParams(nil), nil)
 		if err != nil {
 			logger.Printf("WARN (_) [timer] create %s command failed: %s", name, err.Error())
 			break
@@ -101,7 +101,7 @@ func RunDaemon(name string, daemonConf *conf.Daemon) {
 		if isExiting() {
 			return
 		}
-		cmd, out, err := cmdFromConf(&cmdConf, nil, nil)
+		cmd, out, err := cmdFromConf(&cmdConf, requestParams(nil), nil)
 		if out != nil {
 			out.Close()
 		}
