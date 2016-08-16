@@ -43,6 +43,7 @@ type XUser struct {
 	Files     []XUserFiles     `xml:"files"`
 	Commands  []XUserCommands  `xml:"commands"`
 	Databases []XUserDatabases `xml:"databases"`
+	Vars      []XUserVars      `xml:"vars"`
 }
 
 type XCommands struct {
@@ -133,6 +134,10 @@ type XUserCommands struct {
 }
 
 type XUserDatabases struct {
+	Name   string   `xml:"id,attr"`
+}
+
+type XUserVars struct {
 	Name   string   `xml:"id,attr"`
 }
 
@@ -315,6 +320,7 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 		u.Allows["commands"] = make([]string, 0, 2)
 		u.Allows["files"] = make([]string, 0, 2)
 		u.Allows["databases"] = make([]string, 0, 2)
+		u.Allows["vars"] = make([]string, 0, 2)
 		for _, command := range(user.Commands) {
 			u.Allows["commands"] = append(u.Allows["commands"], command.Name)
 		}
@@ -323,6 +329,9 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 		}
 		for _, database := range(user.Databases) {
 			u.Allows["databases"] = append(u.Allows["databases"], database.Name)
+		}
+		for _, vars := range(user.Vars) {
+			u.Allows["vars"] = append(u.Allows["vars"], vars.Name)
 		}
 		ret.Users[uname] = u
 	}
