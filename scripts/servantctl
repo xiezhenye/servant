@@ -1,0 +1,117 @@
+#!/bin/bash
+
+servant="/opt/servant/bin/servant"
+conf_file="/opt/servant/conf/servant.xml"
+conf_dir="/opt/servant/conf/extra"
+pid_file="/var/run/servant.pid"
+
+function start() {
+    if [[ -f "$pid_file" ]]; then
+      pid=$(_pid)
+      if _pid_exists "$pid"; then
+        echo "servant process already exists. pid: ${pid}"
+        return 2
+      else
+        echo "previous servant process not exit normally"
+      fi
+    fi
+
+    echo "starting servant"
+    (
+        "$servant" -conf "$conf_file" -confdir "$conf_dir" </dev/null &>/dev/null &
+        pid="$!"
+        echo "$pid" >"$pid_file"
+        wait "$pid"
+        rm "$pid_file"
+    )&
+    echo "servant started"
+}
+
+function stop() {
+    pid=$(_pid)
+    if [[ "$?" != 0 ]]; then
+        echo "can not found pid"
+        return 1
+    fi
+    if _pid_exists "$pid"; then
+        echo "stopping servant"
+        kill -TERM "$pid" &>/dev/null
+        for (( i=0; $i<10; i++ )); do
+            if ! _pid_exists "$pid"; then
+                echo "servant stopped"
+                return
+            fi
+        done
+        echo "stopping servant failed"
+        return 2
+    else
+        echo "servant process not exists"
+    fi
+}
+
+function _pid_exists() {
+    pid=$1
+    if [[ -z "$pid" ]]; then
+        return 1
+    fi
+    cmd="$(ps -p "$pid" cho comm)"
+    if [[ -z "$cmd" ]]; then
+        return 2
+    fi
+    if [[ "$cmd" == "servant" ]]; then
+        return 0
+    else
+        return 3
+    fi
+}
+
+function _pid() {
+    if [[ ! -f "$pid_file" ]]; then
+        return 1
+    fi
+    pid="$(cat "$pid_file")"
+    if [[ -z "$pid" ]]; then
+        return 2
+    fi
+    echo "$pid"
+}
+
+function status() {
+    pid=$(_pid)
+    _pid_exists "$pid"
+    case "$?" in
+    0)
+        echo "running"
+        ;;
+    1)
+        echo "stopped"
+        ;;
+    *)
+        echo "stopped but pid file exists"
+        ;;
+    esac
+}
+
+function help() {
+    echo "servantctl (start|stop|restart|status|help)"
+    return 1
+}
+
+cmd=$1
+case "$cmd" in
+start)
+    start
+    ;;
+stop)
+    stop
+    ;;
+restart)
+    stop && start
+    ;;
+status)
+    status
+    ;;
+*)
+    help
+    ;;
+esac
