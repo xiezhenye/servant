@@ -7,7 +7,7 @@
 Summary: A common agent to execute commands, serve files and so on
 Name: servant
 Version: 0.16
-Release: 3%{?dist}
+Release: 4%{?dist}
 License: APL
 Group: Applications/System
 URL: http://github.com/xiezhenye/servant
@@ -31,6 +31,7 @@ A common agent to execute commands, serve files and so on
 %{__mkdir} -p %{buildroot}%{_prefix}/doc
 %{__mv} linux_amd64/bin %{buildroot}%{_prefix}
 %{__mv} README.md LICENSE conf %{buildroot}%{_docdir}
+%{__mv} scripts %{buildroot}%{_prefix}
 
 %clean
 %{__rm} -rf %{buildroot}
@@ -38,15 +39,12 @@ A common agent to execute commands, serve files and so on
 %files
 %defattr(-, root, root, 0755)
 %{_bindir}/servant
+%{_prefix}/scripts/servantctl
 %defattr(-, root, root, 0644)
 %{_docdir}/README.md
 %{_docdir}/LICENSE
 %{_docdir}/conf/example.xml
-
-
-
-
-
+%{_docdir}/conf/timer.xml
 
 
 

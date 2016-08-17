@@ -77,7 +77,7 @@ function _pid() {
     if [[ ! -f "$pid_file" ]]; then
         return 1
     fi
-    pid="$(cat "$pid_file")"
+    pid="$(cat "$pid_file" 2>/dev/null)"
     if [[ -z "$pid" ]]; then
         return 2
     fi

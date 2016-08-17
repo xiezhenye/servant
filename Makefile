@@ -50,7 +50,7 @@ servant.tar.gz:bin/servant
 
 servant-src.tar.gz:driver
 	mkdir servant-src
-	cp -r src conf README.md Makefile LICENSE servant-src
+	cp -r src conf README.md Makefile scripts LICENSE servant-src
 	find servant-src -name '.git*' | xargs rm -rf
 	tar -czvf servant-src.tar.gz servant-src
 	rm -rf servant-src

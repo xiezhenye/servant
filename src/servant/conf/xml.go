@@ -193,8 +193,9 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 		}
 		ret.Log = conf.Server.Log
 	}
-
-	ret.Files = make(map[string]*Files)
+	if ret.Files == nil {
+		ret.Files = make(map[string]*Files)
+	}
 	for _, file := range conf.Files {
 		fname := file.Name
 		ret.Files[fname] = &Files{
@@ -217,7 +218,9 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 			ret.Files[fname].Dirs[dname] = dir
 		}
 	}
-	ret.Commands = make(map[string]*Commands)
+	if ret.Commands == nil {
+		ret.Commands = make(map[string]*Commands)
+	}
 	for _, commands := range conf.Commands {
 		csname := commands.Name
 		ret.Commands[csname] = &Commands{
@@ -246,7 +249,9 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 			}
 		}
 	}
-	ret.Databases = make(map[string]*Database)
+	if ret.Databases == nil {
+		ret.Databases = make(map[string]*Database)
+	}
 	for _, database := range conf.Databases {
 		dname := database.Name
 		ret.Databases[dname] = &Database{
@@ -261,8 +266,9 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 			}
 		}
 	}
-
-	ret.Vars = make(map[string]*Vars)
+	if ret.Vars == nil {
+		ret.Vars = make(map[string]*Vars)
+	}
 	for _, vars := range conf.Vars {
 		vname := vars.Name
 		ret.Vars[vname] = &Vars {
@@ -277,8 +283,9 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 			}
 		}
 	}
-
-	ret.Daemons = make(map[string]*Daemon)
+	if ret.Daemons == nil {
+		ret.Daemons = make(map[string]*Daemon)
+	}
 	for _, daemon := range conf.Daemons  {
 		if daemon.Live <= 0 {
 			daemon.Live = math.MaxUint32
@@ -291,8 +298,9 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 			Retries: daemon.Retries,
 		}
 	}
-
-	ret.Timers = make(map[string]*Timer)
+	if ret.Timers == nil {
+		ret.Timers = make(map[string]*Timer)
+	}
 	for _, timer := range conf.Timers {
 		if timer.Deadline <= 0 {
 			timer.Deadline = math.MaxUint32
@@ -305,8 +313,9 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 			Deadline: timer.Deadline,
 		}
 	}
-
-	ret.Users = make(map[string]*User)
+	if ret.Users == nil {
+		ret.Users = make(map[string]*User)
+	}
 	for _, user := range conf.Users {
 		uname := user.Name
 		u := &User{
