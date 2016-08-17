@@ -380,7 +380,7 @@ func LoadXmlConfig(files, dirs []string, params map[string]string) (config Confi
 		}
 		for _, fileInfo := range filesInfo {
 			filename := fileInfo.Name()
-			if strings.HasSuffix(fileInfo.Name(), ".conf") {
+			if strings.HasSuffix(fileInfo.Name(), ".conf") || strings.HasSuffix(fileInfo.Name(), ".xml") {
 				if fileInfo.IsDir() {
 					continue
 				}

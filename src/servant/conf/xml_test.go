@@ -2,7 +2,6 @@ package conf
 
 import (
 	"testing"
-	"fmt"
 	"sort"
 	"math"
 )
@@ -132,12 +131,27 @@ func TestConfig(t *testing.T) {
 }
 
 func TestFile(t *testing.T) {
-	conf, err := XConfigFromFile("../../../conf/example.xml", make(map[string]string))
+	conf, err := XConfigFromFile("../../../conf/example.xml", map[string]string{})
 	if err != nil {
 		t.Errorf("parse error: %s", err)
 		return
 	}
-	fmt.Printf("%v\n", conf.ToConfig())
+	//fmt.Printf("%v\n", conf.ToConfig())
+	if conf.Server.Listen == "" {
+		t.Errorf("server/listen should present")
+	}
 }
 
-
+func TestFiles(t *testing.T) {
+	conf, err := LoadXmlConfig([]string{
+		"../../../conf/example.xml",
+		"../../../conf/timer.xml",
+	}, []string{}, map[string]string{})
+	if err != nil {
+		t.Errorf("parse error: %s", err)
+		return
+	}
+	if len(conf.Timers) < 1 {
+		t.Errorf("timer conf should present")
+	}
+}

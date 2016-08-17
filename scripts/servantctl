@@ -24,7 +24,15 @@ function start() {
         wait "$pid"
         rm "$pid_file"
     )&
-    echo "servant started"
+    for (( i=0; $i<10; i++ )); do
+        pid=$(_pid)
+        if _pid_exists "$pid"; then
+            echo "servant started"
+            return
+        fi
+    done
+    echo "starting servant failed"
+    return 2
 }
 
 function stop() {

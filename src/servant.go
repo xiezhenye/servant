@@ -33,7 +33,7 @@ func main() {
 
 	config, err := conf.LoadXmlConfig(configs, configDirs, server.CloneGlobalParams())
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(2)
 	}
 	err = server.NewServer(&config).Run()

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!ELEMENT config (server?,vars*,commands*,files*,databases*,user*,daemon*,timer*)>
+<!ELEMENT server (listen,auth,log?)>
+<!ELEMENT listen (#PCDATA)>
+<!ELEMENT auth (maxTimeDelta)>
+<!ATTLIST auth enabled CDATA "0">
+<!ELEMENT maxTimeDelta (#PCDATA)>
+<!ELEMENT log (#PCDATA)>
+<!ELEMENT vars (var+) >
+<!ATTLIST vars id CDATA #REQUIRED>
+<!ELEMENT var (value)>
+<!ATTLIST var id CDATA #REQUIRED>
+<!ATTLIST var expand (true|false) "false">
+<!ELEMENT value (#PCDATA)>
+<!ELEMENT commands (command)>
+<!ATTLIST commands id CDATA #REQUIRED>
+<!ELEMENT command (code)>
+<!ATTLIST command id CDATA #REQUIRED>
+<!ATTLIST command lang (exec|bash) "bash">
+<!ELEMENT code (#PCDATA)>
+<!ELEMENT files (dir)>
+<!ATTLIST files id NAME #REQUIRED>
+<!ELEMENT dir (root|allow)>
+<!ATTLIST dir id NAME #REQUIRED>
+<!ELEMENT root (#PCDATA)>
+<!ELEMENT allow (#PCDATA)>
+<!ELEMENT databases (query)>
+<!ELEMENT query (sql+)>
+<!ELEMENT sql (#PCDATA)>
+<!ELEMENT daemon (code)>
+<!ATTLIST daemon id NAME #REQUIRED>
+<!ATTLIST daemon lang (exec|bash) "bash" >
+<!ATTLIST daemon user CDATA>
+<!ATTLIST daemon retries CDATA "0">
+
+<!ATTLIST daemon live CDATA "0" >
+<!ELEMENT timer (code)>
+<!ATTLIST timer id NAME #REQUIRED>
+<!ATTLIST daemon lang (exec|bash) "bash" >
+<!ATTLIST daemon user CDATA>
+<!ELEMENT user (key?|host*|files*|commands*|databases*|vars*)>
+<!ATTLIST user id NAME #REQUIRED>
+<!ELEMENT key (#PCDATA) >
+<!ELEMENT host (#PCDATA) >

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<config>
+    <timer id="xx" tick="5" deadline="5" lang="bash">
+        <code><![CDATA[
+                 date >>/tmp/timer.log
+            ]]></code>
+    </timer>
+</config>
