@@ -30,6 +30,7 @@ function start() {
             echo "servant started"
             return
         fi
+        sleep 1
     done
     echo "starting servant failed"
     return 2
@@ -49,6 +50,7 @@ function stop() {
                 echo "servant stopped"
                 return
             fi
+            sleep 1
         done
         echo "stopping servant failed"
         return 2
