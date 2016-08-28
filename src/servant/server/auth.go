@@ -32,8 +32,9 @@ func (self *Session) auth() (username string, err error) {
 	if !ok {
 		return "", fmt.Errorf("user %s not found", reqUser)
 	}
-	if ! checkHosts(self.req.RemoteAddr, user.Hosts) {
-		return reqUser, fmt.Errorf("remote host is denied")
+	remoteHost := strings.Split(self.req.RemoteAddr, ":")[0]
+	if ! checkHosts(remoteHost, user.Hosts) {
+		return reqUser, fmt.Errorf("remote host %s is denied", self.req.RemoteAddr)
 	}
 	if user.Key != "" {
 		nowTs := time.Now().Unix()
