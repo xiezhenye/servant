@@ -30,7 +30,8 @@ A common agent to execute commands, serve files and so on
 %{__rm} -rf %{buildroot}
 %{__mkdir} -p %{buildroot}%{_prefix}/doc
 %{__mv} linux_amd64/bin %{buildroot}%{_prefix}
-%{__mv} README.md LICENSE conf %{buildroot}%{_docdir}
+%{__mv} README.md LICENSE example %{buildroot}%{_docdir}
+%{__mv} conf %{buildroot}%{_prefix}
 %{__mv} scripts %{buildroot}%{_prefix}
 
 %clean
@@ -40,11 +41,11 @@ A common agent to execute commands, serve files and so on
 %defattr(-, root, root, 0755)
 %{_bindir}/servant
 %{_prefix}/scripts/servantctl
+%{_prefix}/conf/extra
 %defattr(-, root, root, 0644)
 %{_docdir}/README.md
 %{_docdir}/LICENSE
-%{_docdir}/conf/example.xml
-%{_docdir}/conf/timer.xml
-
-
+%{_docdir}/example/example.xml
+%{_docdir}/example/timer.xml
+%{_prefix}/conf/servant.xml
 

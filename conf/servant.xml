@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+    <server>
+        <listen>:2465</listen>
+        <auth enabled="true">
+            <maxTimeDelta>300</maxTimeDelta>
+        </auth>
+        <log>/data/logs/servant/servant.log</log>
+    </server>
+    <!-- ...... -->
+</config>
+
