@@ -26,6 +26,8 @@ func main() {
 	flag.Var(&configs, "conf", "config files path")
 	flag.Var(&configDirs, "confdir", "config directories path")
 	flag.Var(&vars, "var", "vars")
+	var debug bool
+	flag.BoolVar(&debug, "debug", false, "enable debug mode")
 	flag.Parse()
 
 	server.SetArgVars(vars)

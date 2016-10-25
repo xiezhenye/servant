@@ -12,6 +12,8 @@ type Config struct {
 
 	Auth       Auth
 	Log        string
+
+	Debug      bool
 }
 
 
