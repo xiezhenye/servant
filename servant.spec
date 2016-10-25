@@ -37,6 +37,9 @@ A common agent to execute commands, serve files and so on
 %clean
 %{__rm} -rf %{buildroot}
 
+%post
+%{__mkdir} -p /data/logs/servant
+
 %files
 %defattr(-, root, root, 0755)
 %{_bindir}/servant

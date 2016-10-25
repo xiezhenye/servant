@@ -24,6 +24,10 @@ func TestCheckHosts(t *testing.T) {
 	if ! checkHosts("10.11.12.13", []string{"10.11.12.13/32"}) {
 		t.Fail()
 	}
+	/*
+	if ! checkHosts("10.11.12.13", []string{"10.11.12.13"}) {
+		t.Fail()
+	}*/
 
 	if checkHosts("10.11.12.13", []string{"10.11.12.254/32"}) {
 		t.Fail()
