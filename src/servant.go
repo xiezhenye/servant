@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"flag"
 	"os"
-	"github.com/davecgh/go-spew/spew"
+//	"github.com/davecgh/go-spew/spew"
 )
 
 type arrayFlags []string
@@ -27,8 +27,8 @@ func main() {
 	flag.Var(&configs, "conf", "config files path")
 	flag.Var(&configDirs, "confdir", "config directories path")
 	flag.Var(&vars, "var", "vars")
-	var debug bool
-	flag.BoolVar(&debug, "debug", false, "enable debug mode")
+	//var debug bool
+	//flag.BoolVar(&debug, "debug", false, "enable debug mode")
 	flag.Parse()
 
 	server.SetArgVars(vars)
@@ -39,13 +39,13 @@ func main() {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(2)
 	}
+	/*
 	if debug {
 		config.Debug = true
 		spew.Config.Indent = "    "
 		spew.Config.MaxDepth = 100
 		spew.Fdump(os.Stderr, config)
-		//spew.Fprintf(os.Stderr, "%#v", config)
-	}
+	}*/
 	err = server.NewServer(&config).Run()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
