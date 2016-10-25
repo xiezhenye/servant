@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"flag"
 	"os"
+	"github.com/davecgh/go-spew/spew"
 )
 
 type arrayFlags []string
@@ -37,6 +38,13 @@ func main() {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(2)
+	}
+	if debug {
+		config.Debug = true
+		spew.Config.Indent = "    "
+		spew.Config.MaxDepth = 100
+		spew.Fdump(os.Stderr, config)
+		//spew.Fprintf(os.Stderr, "%#v", config)
 	}
 	err = server.NewServer(&config).Run()
 	if err != nil {

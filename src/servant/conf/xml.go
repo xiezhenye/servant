@@ -198,8 +198,10 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 	}
 	for _, file := range conf.Files {
 		fname := file.Name
-		ret.Files[fname] = &Files{
-			Dirs: make(map[string]*Dir),
+		if ret.Files[fname] == nil {
+			ret.Files[fname] = &Files{
+				Dirs: make(map[string]*Dir),
+			}
 		}
 		for _, xdir := range file.Dirs {
 			dname := xdir.Name
@@ -223,8 +225,10 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 	}
 	for _, commands := range conf.Commands {
 		csname := commands.Name
-		ret.Commands[csname] = &Commands{
-			Commands: make(map[string]*Command),
+		if ret.Commands[csname] == nil {
+			ret.Commands[csname] = &Commands{
+				Commands: make(map[string]*Command),
+			}
 		}
 		for _, command := range commands.Commands {
 			cname := command.Name
@@ -254,10 +258,12 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 	}
 	for _, database := range conf.Databases {
 		dname := database.Name
-		ret.Databases[dname] = &Database{
-			Dsn: database.Dsn,
-			Driver: database.Driver,
-			Queries: make(map[string]*Query),
+		if ret.Databases[dname] == nil {
+			ret.Databases[dname] = &Database{
+				Dsn: database.Dsn,
+				Driver: database.Driver,
+				Queries: make(map[string]*Query),
+			}
 		}
 		for _, query := range database.Queries {
 			ret.Databases[dname].Queries[query.Name] = &Query{
@@ -271,8 +277,10 @@ func (conf *XConfig) IntoConfig(ret *Config) {
 	}
 	for _, vars := range conf.Vars {
 		vname := vars.Name
-		ret.Vars[vname] = &Vars {
-			Vars: make(map[string]*Var),
+		if ret.Vars[vname] == nil {
+			ret.Vars[vname] = &Vars {
+				Vars: make(map[string]*Var),
+			}
 		}
 		for _, v := range vars.Vars {
 			ret.Vars[vname].Vars[v.Name] = &Var{
