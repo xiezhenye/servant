@@ -59,6 +59,7 @@ func RunTimer(name string, timerConf *conf.Timer) {
 		if out != nil {
 			out.Close()
 		}
+		logger.Printf("INFO (_) [timer] command: %v", cmd.Args)
 		err = cmd.Start()
 		if err != nil {
 			logger.Printf("WARN (_) [timer] start %s command failed: %s", name, err.Error())
@@ -109,6 +110,7 @@ func RunDaemon(name string, daemonConf *conf.Daemon) {
 			logger.Printf("WARN (_) [daemon] create %s command failed: %s", name, err.Error())
 			return
 		}
+		logger.Printf("INFO (_) [daemon] command: %v", cmd.Args)
 		err = cmd.Start()
 		if err != nil {
 			logger.Printf("WARN (_) [daemon] start %s failed: %s", name, err.Error())
