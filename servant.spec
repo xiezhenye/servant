@@ -32,6 +32,7 @@ A common agent to execute commands, serve files and so on
 %{__mv} linux_amd64/bin %{buildroot}%{_prefix}
 %{__mv} README.md LICENSE example %{buildroot}%{_docdir}
 %{__mv} conf %{buildroot}%{_prefix}
+%{__mkdir} %{buildroot}%{_prefix}/conf/extra
 %{__mv} scripts %{buildroot}%{_prefix}
 
 %clean
