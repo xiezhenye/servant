@@ -227,6 +227,7 @@ func (self CommandServer) execCommand(cmdConf *conf.Command) (outBuf []byte, err
 				outBuf, err = ioutil.ReadAll(out)
 				if err != nil {
 					ch <- err
+					cmd.Wait()
 					return
 				}
 			}
