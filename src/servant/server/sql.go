@@ -61,8 +61,10 @@ func (self DatabaseServer) serve() {
 	data := make([]sqlResult, 0, 1)
 
 	for _, sql := range(queryConf.Sqls) {
-		sql, sqlParams := replaceSqlParams(sql, reqParams)
-
+		sql, sqlParams, ok := replaceSqlParams(sql, reqParams)
+		if !ok {
+			self.ErrorEnd(http.StatusInternalServerError, "parse sql params failed. sql: %s, params: %v", sql, reqParams)
+		}
 		result, err := dbQuery(db, sql, sqlParams)
 		if err != nil {
 			self.ErrorEnd(http.StatusInternalServerError, "query %s failed: %s", sql, err)
@@ -79,16 +81,13 @@ func (self DatabaseServer) serve() {
 	self.GoodEnd("execution done")
 }
 
-func replaceSqlParams(inSql string, query ParamFunc) (outSql string, params []interface{}){
-	params = make([]interface{}, 0, 4)
-	return paramRe.ReplaceAllStringFunc(inSql, func(s string) string {
-		var v string = ""
-		if query != nil {
-			v, _ = query(s[2:len(s) - 1])
-		}
-		params = append(params, v)
+func replaceSqlParams(inSql string, query ParamFunc) (string, []interface{}, bool){
+	params := make([]interface{}, 0, 4)
+	outSql, ok := VarExpand(inSql, query, func(s string)string {
+		params = append(params, s)
 		return "?"
-	}), params
+	})
+	return outSql, params, ok
 }
 
 func dbQuery(db *sql.DB, sql string, params []interface{}) (sqlResult, error) {

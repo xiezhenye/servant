@@ -22,23 +22,23 @@ func TestReplaceSqlParams(t *testing.T) {
 		return "", false
 	}
 
-	s, p := replaceSqlParams("select 1", p1)
-	if s != "select 1" || len(p) != 0 {
+	s, p, ok := replaceSqlParams("select 1", p1)
+	if !ok || s != "select 1" || len(p) != 0 {
 		t.Fail()
 	}
 
-	s, p = replaceSqlParams("select ${a}", p1)
-	if s != "select ?" || len(p) != 1 || p[0] != "1" {
+	s, p, ok = replaceSqlParams("select ${a}", p1)
+	if !ok || s != "select ?" || len(p) != 1 || p[0] != "1" {
 		t.Fail()
 	}
 
-	s, p = replaceSqlParams("select ${a}", p2)
-	if s != "select ?" || len(p) != 1 || p[0] != "1" {
+	s, p, ok = replaceSqlParams("select ${a}", p2)
+	if !ok || s != "select ?" || len(p) != 1 || p[0] != "1" {
 		t.Fail()
 	}
 
-	s, p = replaceSqlParams("select ${a}, ${b}", p2)
-	if s != "select ?, ?" || len(p) != 2 || p[0] != "1" || p[1] != "2" {
+	s, p, ok = replaceSqlParams("select ${a}, ${b}", p2)
+	if !ok || s != "select ?, ?" || len(p) != 2 || p[0] != "1" || p[1] != "2" {
 		t.Fail()
 	}
 }

@@ -19,13 +19,13 @@ func TestExpand(t *testing.T) {
 	SetGlobalParam("hello2", "hello ${s_${w}}")
 	SetVarCanExpand("hello2", true)
 	v, exists = reqParams("hello2")
-        if ! exists {
-                t.Error("should exists!")
-                return
-        }
-        if v != "hello golang" {
-                t.Errorf("expand wrong! %s", v)
-        }
+    if ! exists {
+        t.Error("should exists!")
+        return
+    }
+    if v != "hello golang" {
+        t.Errorf("expand wrong! %s", v)
+    }
 
 	SetGlobalParam("w", "servant")
 	v, exists = reqParams("hello")
@@ -51,4 +51,41 @@ func TestExpand(t *testing.T) {
 		t.Error("exists shoud be false")
 	}
 
+}
+
+func TestVarExpand(t *testing.T) {
+	vars := map[string]string {
+		"a": "a",
+		"b": "b",
+		"var": "var",
+		"variable": "variable",
+	}
+	q := func(k string) (string, bool) {
+		return vars[k], true
+	}
+	r := func(s string) string {
+		return s
+	}
+	var ret string
+	var ok bool
+	ret, ok = VarExpand("111${a}222", q, r)
+	if !ok || ret != "111a222" {
+		t.Errorf("fail: %s", ret)
+	}
+	ret, ok = VarExpand("111${a}222${b}333", q, r)
+	if !ok || ret != "111a222b333" {
+		t.Errorf("fail: %s", ret)
+	}
+	ret, ok = VarExpand("111${a}222${b}333", q, r)
+	if !ok || ret != "111a222b333" {
+		t.Errorf("fail: %s", ret)
+	}
+	ret, ok = VarExpand("${v${a}r}", q, r)
+	if !ok || ret != "var" {
+		t.Errorf("fail: %s", ret)
+	}
+	ret, ok = VarExpand("!${${v${a}r}iable}!", q, r)
+	if !ok || ret != "!variable!" {
+		t.Errorf("fail: %s", ret)
+	}
 }

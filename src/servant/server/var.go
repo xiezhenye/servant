@@ -168,3 +168,47 @@ func ValidateParams(vs conf.Validators, params ParamFunc) bool {
 	}
 	return true
 }
+
+func VarExpand(s string, query ParamFunc, replace func(string)string) (string, bool) {
+	const maxDepth = 10
+	stack := make([][]byte, maxDepth)
+	stack[0] = make([]byte, 0, len(s))
+	for i := 1; i < len(stack); i++ {
+		stack[i] = make([]byte, 0, 8)
+	}
+	sp := 0
+	for i := 0; i < len(s); i++ {
+		if i < len(s) - 1 && s[i:i+2] == "${" {
+			sp++
+			if sp == maxDepth {
+				return "", false
+			}
+			i++
+		} else if s[i] == '}' {
+			if sp < 1 {
+				return "", false
+			}
+			n := stack[sp]
+			if !varExpr.Match(n) {
+				return "", false
+			}
+			v, ok := query(string(n))
+			if !ok {
+				return "", false
+			}
+			if sp == 1 {
+				stack[0] = append(stack[0], []byte(replace(v))...)
+			} else {
+				stack[sp - 1] = append(stack[sp - 1], []byte(v)...)
+			}
+			stack[sp] = stack[sp][:0]
+			sp--
+		} else {
+			stack[sp] = append(stack[sp], s[i])
+		}
+	}
+	if sp != 0 {
+		return "", false
+	}
+	return string(stack[sp]), true
+}

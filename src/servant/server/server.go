@@ -106,6 +106,7 @@ func parseUriPath(path string) (resource, group, item, tail string) {
 }
 
 var paramRe, _ = regexp.Compile(`\${[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)?}`)
+var varExpr, _ = regexp.Compile(`^[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)?$`)
 var paramNameRe, _ = regexp.Compile(`^[a-zA-Z]\w*$`)
 type ParamFunc func(string)(string, bool)
 

@@ -43,26 +43,7 @@ func getCmdBashArgs(code string, query ParamFunc) (string, []string) {
 }
 
 func replaceCmdParams(arg string, query ParamFunc) (string, bool) {
-	var exists = true
-	var ret = arg
-	var prev = ret
-	for {
-		ret = paramRe.ReplaceAllStringFunc(prev, func(s string) string {
-			if query == nil {
-				return ""
-			}
-			var _ret string
-			var _exists bool
-			_ret, _exists = query(s[2:len(s) - 1])
-			exists = exists && _exists
-			return _ret
-		})
-		if ret == prev {
-			break
-		}
-		prev = ret
-	}
-	return ret, exists
+	return VarExpand(arg, query, func(s string) string { return s })
 }
 
 
