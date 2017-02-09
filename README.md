@@ -2,8 +2,15 @@
 A common agent to execute configured command and serve file read write via HTTP protocol
 
 ## build
+### executable
     cd <path to project>
     make
+### rpm
+    cd <path to project>
+    make rpm
+### tarball
+    cd <path to project>
+    make tarball
     
 By defaults, only mysql database driver are built in. You can use `make DRIVERS="mysql sqlite postgres"` to choose other drivers.
 
