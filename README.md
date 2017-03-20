@@ -15,7 +15,7 @@ A common agent to execute configured command and serve file read write via HTTP 
 By defaults, only mysql database driver are built in. You can use `make DRIVERS="mysql sqlite postgres"` to choose other drivers.
 
 ## usage
-    /path/to/servant/scripts/servantctl start
+    /path/to/servant/scripts/servantctl (start|stop|restart|status|help)
 
 ## command-line arguments
 
@@ -247,7 +247,10 @@ Sqls to be executed. Will be executed during a database session.
 
 ### `vars`
 
-Defines a group of variables.
+Defines a group of variables. 
+
+Variables expand can be used in `command`, `var`, `file/root`. `${param_name}` is a request param, `${group.item}` is a user define varaible, `${_arg.name}` is a command-line argument variable. Variable expand can also defined recursively, like `${group.${item_param}}`
+
 
 #### `vars/var`
 
@@ -332,12 +335,21 @@ only supports GET and POST method.
 `curl -I http://127.0.0.1:2465/files/db1/binlog1/test.txt`
 
 ### databases
-Output are in json format
+Outputs are in json format
 
 `curl http://127.0.0.1:2465/databases/mysql/select_1`
 
 `curl http://127.0.0.1:2465/databases/mysql/select_v?v=hello`
 
+### variables
+
+#### get a variable
+
+`curl http://127.0.0.1:2465/vars/foo`
+
+#### set a variable
+
+`curl  -XPOST http://127.0.0.1:2465/vars/foo -d 'BAR'`
 
 ### authorization
 
