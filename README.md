@@ -159,9 +159,22 @@ Defines a group of commands can be executed, contains some `command` elements.
   
   Limit the command execution time in seconds, default is unlimited.
 
+* Attribute `backgrand`:
+
+  Whether the command runs in backgrand. Could be true or false. When `backgrand` == true, Servant will return immediately.
+
 * Element `code`:
 
   Code of the command to be executed
+
+* Element `lock`:
+
+  Mutex. Attributes: name: locks with same name is exclusive. wait: when race for the lock failed, wait until the lock is released or return immediately, default is false. timeout: Max time to wait for the lock, in seconds. 
+
+* Element `validate`:
+
+  Validate params. Attributes: name: param name to validate. Body: Validator regexp.  
+
 
 ### `daemon`
 * Attribute `lang`:
@@ -225,6 +238,11 @@ A directory can be accessed.
 
   File name patterns allowed to be access in regular expression. If not defined, all files in the directory can be accessed. This element can appearances more than one times. 
 
+* Element `validate`:
+
+  Validate params. Attributes: name: param name to validate. Body: Validator regexp.  
+
+
 ### `database`
 
 A database resource.
@@ -244,6 +262,10 @@ Sqls to be executed. Will be executed during a database session.
 * Element `sql`:
 
   A sql. You can use `${param_name}` as a placeholder, and replace it by query parameters.  Can appearances multiple times.
+
+* Element `validate`:
+
+  Validate params. Attributes: name: param name to validate. Body: Validator regexp.  
 
 ### `vars`
 
