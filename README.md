@@ -159,9 +159,9 @@ Defines a group of commands can be executed, contains some `command` elements.
   
   Limit the command execution time in seconds, default is unlimited.
 
-* Attribute `backgrand`:
+* Attribute `background`:
 
-  Whether the command runs in backgrand. Could be true or false. When `backgrand` == true, Servant will return immediately.
+  Whether the command runs in background. Could be true or false. When `background` == true, Servant will return immediately.
 
 * Element `code`:
 
