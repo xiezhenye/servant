@@ -348,7 +348,7 @@ only supports GET and POST method.
 `echo "hello world!" | curl -XPOST http://127.0.0.1:2465/files/db1/binlog1/test.txt -d @-`
 
 #### update a file
-`echo "hello world!" | curl -XPUT http://127.0.0.1:2465/files/db1/binlog1/test.txt -d -`
+`echo "hello world!" | curl -XPUT http://127.0.0.1:2465/files/db1/binlog1/test.txt -d @-`
 
 #### delete a file
 `curl -XDELETE http://127.0.0.1:2465/files/db1/binlog1/test.txt`
