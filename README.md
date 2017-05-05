@@ -56,7 +56,7 @@ Servant config file is in xml, may looks like this;
         </server>
 
         <commands id="db1">
-            <command id="foo" runas="mysql" lang="shell">
+            <command id="foo" runas="mysql" lang="bash">
                 <code>echo "hello world $(whoami)"</code>
             </command>
             <command id="grep" lang="exec">
@@ -331,7 +331,7 @@ only supports GET and POST method.
 `curl http://127.0.0.1:2465/commands/db1/foo`
 
 #### with input stream
-`echo "hello world" | curl -XPOST http://127.0.0.1:2465/commands/db1/grep -d -`
+`echo "hello world" | curl -XPOST http://127.0.0.1:2465/commands/db1/grep -d @-`
 
 #### with parameters
 `curl http://127.0.0.1:2465/commands/db1/sleep?t=2`
@@ -345,7 +345,7 @@ only supports GET and POST method.
 `curl -H 'Range: bytes=6-10' http://127.0.0.1:2465/files/db1/binlog1/test.txt`
 
 #### create a file
-`echo "hello world!" | curl -XPOST http://127.0.0.1:2465/files/db1/binlog1/test.txt -d -`
+`echo "hello world!" | curl -XPOST http://127.0.0.1:2465/files/db1/binlog1/test.txt -d @-`
 
 #### update a file
 `echo "hello world!" | curl -XPUT http://127.0.0.1:2465/files/db1/binlog1/test.txt -d -`
