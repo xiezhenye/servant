@@ -23,7 +23,7 @@ function start() {
         echo "$pid" >"$pid_file"
         wait "$pid"
         rm "$pid_file"
-    )&
+    ) </dev/null &>/dev/null &
     for (( i=0; $i<10; i++ )); do
         pid=$(_pid)
         if _pid_exists "$pid"; then
