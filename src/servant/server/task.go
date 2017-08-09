@@ -13,6 +13,7 @@ import (
 var taskProcesses = make(map[int] *exec.Cmd)
 var taskProcessesLock sync.Mutex
 var _isExiting bool = false
+var sigHandlerOnce sync.Once
 
 func registerProcess(cmd *exec.Cmd) {
 	taskProcessesLock.Lock()
@@ -47,7 +48,7 @@ func RunTimer(name string, timerConf *conf.Timer) {
 	}
 	ticker := time.NewTicker(time.Duration(timerConf.Tick) * time.Second)
 	logger.Printf("INFO (_) [timer] starting timer %s", name)
-	for _ = range(ticker.C) {
+	for range(ticker.C) {
 		if isExiting() {
 			break
 		}
@@ -134,19 +135,21 @@ func RunDaemon(name string, daemonConf *conf.Daemon) {
 }
 
 func cleanupOnExit() {
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
-	go func() {
-		sig := <- sigChan
-		logger.Printf("INFO (_) [daemon] got signal %s", sig.String())
-		cleanupProcesses()
-		logger.Printf("INFO (_) [daemon] cleaning up done")
-		os.Exit(0)
-	}()
+	sigHandlerOnce.Do(func(){
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
+		go func() {
+			sig := <- sigChan
+			logger.Printf("INFO (_) [daemon] got signal %s", sig.String())
+			cleanupProcesses()
+			logger.Println("INFO (_) [daemon] cleaning up done")
+			os.Exit(0)
+		}()
+	})
 }
 
 func cleanupProcesses() {
-	logger.Printf("INFO (_) [daemon] cleaning up process")
+	logger.Println("INFO (_) [daemon] cleaning up process")
 	taskProcessesLock.Lock()
 	_isExiting = true
 	taskProcessesLock.Unlock()
