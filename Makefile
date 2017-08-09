@@ -1,5 +1,9 @@
 pwd=$(shell pwd)
 arch=$(shell echo `go env GOOS`_`go env GOARCH`)
+include VERSION
+rev=$(shell git rev-parse HEAD)
+buildarg=-ldflags "-X servant/conf.Version=$(version) -X servant/conf.Release=$(release) -X servant/conf.Rev=$(rev)"
+
 drivers_file=src/servant/server/sql_drivers.go
 
 .PHONY : all clean driver tarball test
@@ -34,10 +38,10 @@ bin/servant:$(arch)/bin/servant
 	cp -r $(arch)/bin .
 
 linux_amd64/bin/servant:driver
-	GOOS=linux GOARCH=amd64 GOPATH=$(pwd) CGO_ENABLED=1 GOBIN=$(pwd)/linux_amd64/bin go install -v src/servant.go
+	GOOS=linux GOARCH=amd64 GOPATH=$(pwd) CGO_ENABLED=1 GOBIN=$(pwd)/linux_amd64/bin go install $(buildarg) -v src/servant.go
 
 darwin_amd64/bin/servant:driver
-	GOOS=darwin GOARCH=amd64 GOPATH=$(pwd) CGO_ENABLED=1 GOBIN=$(pwd)/darwin_amd64/bin go install -v src/servant.go
+	GOOS=darwin GOARCH=amd64 GOPATH=$(pwd) CGO_ENABLED=1 GOBIN=$(pwd)/darwin_amd64/bin go install $(buildarg) -v src/servant.go
 
 
 tarball:servant.tar.gz
@@ -50,7 +54,7 @@ servant.tar.gz:bin/servant
 
 servant-src.tar.gz:driver
 	mkdir servant-src
-	cp -r src conf example README.md Makefile scripts LICENSE servant-src
+	cp -r src conf example README.md Makefile VERSION scripts LICENSE servant-src
 	find servant-src -name '.git*' | xargs rm -rf
 	tar -czvf servant-src.tar.gz servant-src
 	rm -rf servant-src
@@ -59,11 +63,10 @@ rpm:servant-src.tar.gz
 	mkdir -p rpmbuild/{SPECS,SOURCES}
 	cp servant-src.tar.gz rpmbuild/SOURCES
 	cp servant.spec rpmbuild/SPECS
-	rpmbuild --define "_topdir $(pwd)/rpmbuild" -ba rpmbuild/SPECS/servant.spec
+	rpmbuild  --target=x86_64 --define "_topdir $(pwd)/rpmbuild" --define "_version $(version)" --define "_release $(release)" -ba rpmbuild/SPECS/servant.spec
 	mv rpmbuild/SRPMS/*.src.rpm .
 	mv rpmbuild/RPMS/x86_64/*.rpm .
 	rm -rf rpmbuild
-
 
 test:
 	GOPATH=$(pwd) go test -v -coverprofile=c_server.out servant/server

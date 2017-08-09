@@ -24,12 +24,19 @@ func main() {
 	var configs arrayFlags
 	var configDirs arrayFlags
 	var vars arrayFlags
+	showVer := false
 	flag.Var(&configs, "conf", "config files path")
 	flag.Var(&configDirs, "confdir", "config directories path")
 	flag.Var(&vars, "var", "vars")
+	flag.BoolVar(&showVer, "ver", false, "show version and exit")
 	//var debug bool
 	//flag.BoolVar(&debug, "debug", false, "enable debug mode")
 	flag.Parse()
+
+        if showVer {
+                fmt.Printf("%s-%s @%s\n", conf.Version, conf.Release, conf.Rev)
+                return
+        }
 
 	server.SetArgVars(vars)
 	server.SetEnvVars()
