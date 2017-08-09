@@ -165,13 +165,13 @@ func cmdFromConf(cmdConf *conf.Command, params ParamFunc, input io.ReadCloser) (
 	cmd.Stdin = input
 	cmd.Stderr = nil
 	if cmdConf.Background {
-		//cmd.SysProcAttr.Setpgid = true
-		//cmd.SysProcAttr.Pgid = 0
 		cmd.SysProcAttr.Setsid = true
 		cmd.SysProcAttr.Foreground = false
 		cmd.Stdout = nil
 		cmd.Stdin = nil
 	} else {
+		cmd.SysProcAttr.Setpgid = true
+		cmd.SysProcAttr.Pgid = 0
 		out, err = cmd.StdoutPipe()
 		if err != nil {
 			err = NewServantError(http.StatusInternalServerError, "pipe stdout failed: %s", err.Error())
