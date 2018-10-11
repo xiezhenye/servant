@@ -92,7 +92,7 @@ Servant config file is in xml, may looks like this;
         </files>
 
         <database id="mysql" driver="mysql" dsn="root:@tcp(127.0.0.1:3306)/test">
-            <query id="select_1">select 1;</query>
+            <query id="select_1"><sql> select 1 </sql></query>
         </database>
 
         <vars id="vars">
