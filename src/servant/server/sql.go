@@ -61,13 +61,14 @@ func (self DatabaseServer) serve() {
 	data := make([]sqlResult, 0, 1)
 
 	for _, sql := range(queryConf.Sqls) {
-		sql, sqlParams, ok := replaceSqlParams(sql, reqParams)
+		sqlReplaced, sqlParams, ok := replaceSqlParams(sql, reqParams)
 		if !ok {
-			self.ErrorEnd(http.StatusInternalServerError, "parse sql params failed. sql: %s, params: %v", sql, reqParams)
+			self.ErrorEnd(http.StatusInternalServerError, "parse sql params failed. sql: %s, params: %v", sql, self.req.URL.Query())
+			return
 		}
-		result, err := dbQuery(db, sql, sqlParams)
+		result, err := dbQuery(db, sqlReplaced, sqlParams)
 		if err != nil {
-			self.ErrorEnd(http.StatusInternalServerError, "query %s failed: %s", sql, err)
+			self.ErrorEnd(http.StatusInternalServerError, "query %s failed: %s", sqlReplaced, err)
 			return
 		}
 		data = append(data, result)
