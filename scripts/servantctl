@@ -1,8 +1,9 @@
 #!/bin/bash
 
-servant="/opt/servant/bin/servant"
-conf_file="/opt/servant/conf/servant.xml"
-conf_dir="/opt/servant/conf/extra"
+root=$(dirname "$(dirname "$0")")
+servant="$root/bin/servant"
+conf_file="$root/conf/servant.xml"
+conf_dir="$root/conf/extra"
 pid_file="/var/run/servant.pid"
 
 function start() {
