@@ -1,14 +1,14 @@
 package server
 
 import (
+	"github.com/pkg/errors"
 	"github.com/xiezhenye/servant/pkg/conf"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"os/exec"
 	"os/user"
 	"regexp"
-	//"io/ioutil"
-	"io"
-	"io/ioutil"
 	"strconv"
 	"strings"
 	"syscall"
@@ -213,15 +213,19 @@ func (self CommandServer) execCommand(cmdConf *conf.Command) (outBuf []byte, err
 		ch := make(chan error, 1)
 		go func() {
 			if out != nil {
-				outBuf, err = ioutil.ReadAll(out)
-				if err != nil {
+				if outBuf, err = ioutil.ReadAll(out); err != nil {
 					ch <- err
-					cmd.Wait()
+					_ = cmd.Wait()
 					return
 				}
+				if err = cmd.Wait(); err != nil {
+					ch <- errors.WithMessage(err, string(outBuf))
+					return
+				}
+				ch <- nil
+				return
 			}
-			err = cmd.Wait()
-			ch <- err
+			ch <- cmd.Wait()
 		}()
 		timeout := time.Duration(cmdConf.Timeout)
 		select {
@@ -230,7 +234,7 @@ func (self CommandServer) execCommand(cmdConf *conf.Command) (outBuf []byte, err
 				err = NewServantError(http.StatusBadGateway, "execution error: %s", err)
 			}
 		case <-time.After(timeout * time.Second):
-			cmd.Process.Kill()
+			_ = cmd.Process.Kill()
 			err = NewServantError(http.StatusGatewayTimeout, "command execution timeout: %d", timeout)
 		}
 	}
