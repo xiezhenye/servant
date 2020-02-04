@@ -25,4 +25,4 @@ func TestParseUriPath(t *testing.T) {
 	if r != "" || g != "" || i != "" || l != "" {
 		t.Fail()
 	}
- }
+}

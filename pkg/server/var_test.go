@@ -1,14 +1,16 @@
 package server
+
 import (
 	"testing"
 )
+
 func TestExpand(t *testing.T) {
 	reqParams := requestParams(nil)
 	SetGlobalParam("hello", "hello ${w}")
 	SetGlobalParam("w", "world")
 	SetVarCanExpand("hello", true)
 	v, exists := reqParams("hello")
-	if ! exists {
+	if !exists {
 		t.Error("should exists!")
 		return
 	}
@@ -19,17 +21,17 @@ func TestExpand(t *testing.T) {
 	SetGlobalParam("hello2", "hello ${s_${w}}")
 	SetVarCanExpand("hello2", true)
 	v, exists = reqParams("hello2")
-    if ! exists {
-        t.Error("should exists!")
-        return
-    }
-    if v != "hello golang" {
-        t.Errorf("expand wrong! %s", v)
-    }
+	if !exists {
+		t.Error("should exists!")
+		return
+	}
+	if v != "hello golang" {
+		t.Errorf("expand wrong! %s", v)
+	}
 
 	SetGlobalParam("w", "servant")
 	v, exists = reqParams("hello")
-	if ! exists {
+	if !exists {
 		t.Error("should exists!")
 		return
 	}
@@ -54,10 +56,10 @@ func TestExpand(t *testing.T) {
 }
 
 func TestVarExpand(t *testing.T) {
-	vars := map[string]string {
-		"a": "a",
-		"b": "b",
-		"var": "var",
+	vars := map[string]string{
+		"a":        "a",
+		"b":        "b",
+		"var":      "var",
 		"variable": "variable",
 	}
 	q := func(k string) (string, bool) {

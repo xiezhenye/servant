@@ -1,9 +1,9 @@
 package conf
 
 import (
-	"testing"
-	"sort"
 	"math"
+	"sort"
+	"testing"
 )
 
 func TestConfig(t *testing.T) {
@@ -131,7 +131,7 @@ func TestConfig(t *testing.T) {
 }
 
 func TestFile(t *testing.T) {
-	conf, err := XConfigFromFile("../../../example/example.xml", map[string]string{})
+	conf, err := XConfigFromFile("../../example/example.xml", map[string]string{})
 	if err != nil {
 		t.Errorf("parse error: %s", err)
 		return
@@ -144,8 +144,8 @@ func TestFile(t *testing.T) {
 
 func TestFiles(t *testing.T) {
 	conf, err := LoadXmlConfig([]string{
-		"../../../example/example.xml",
-		"../../../example/timer.xml",
+		"../../example/example.xml",
+		"../../example/timer.xml",
 	}, []string{}, map[string]string{})
 	if err != nil {
 		t.Errorf("parse error: %s", err)

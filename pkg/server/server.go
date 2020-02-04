@@ -1,43 +1,43 @@
 package server
 
 import (
-	"servant/conf"
+	"fmt"
+	"github.com/xiezhenye/servant/pkg/conf"
 	"net/http"
+	"net/url"
+	"os"
+	"regexp"
 	"sync/atomic"
 	"time"
-	"regexp"
-	"fmt"
-	"os"
-	"net/url"
 )
 
 const ServantErrHeader = "X-Servant-Err"
 
 type Server struct {
-	config          *conf.Config
-	resources       map[string]HandlerFactory
-	nextSessionId   uint64
+	config        *conf.Config
+	resources     map[string]HandlerFactory
+	nextSessionId uint64
 }
 
 type Session struct {
-	id       uint64
-	config   *conf.Config
+	id                          uint64
+	config                      *conf.Config
 	resource, group, item, tail string
-	username string
-	resp     http.ResponseWriter
-	req      *http.Request
+	username                    string
+	resp                        http.ResponseWriter
+	req                         *http.Request
 }
 
 type ServantError struct {
-	HttpCode   int
-	Message    string
+	HttpCode int
+	Message  string
 	//Error      error
 }
 
 func NewServantError(code int, format string, v ...interface{}) ServantError {
-	return ServantError {
+	return ServantError{
 		HttpCode: code,
-		Message: fmt.Sprintf(format, v...),
+		Message:  fmt.Sprintf(format, v...),
 	}
 }
 
@@ -46,10 +46,10 @@ func (self ServantError) Error() string {
 }
 
 func NewServer(config *conf.Config) *Server {
-	ret := &Server {
-		config:         config,
-		nextSessionId:  0,
-		resources:      make(map[string]HandlerFactory),
+	ret := &Server{
+		config:        config,
+		nextSessionId: 0,
+		resources:     make(map[string]HandlerFactory),
 	}
 	ret.loadVars()
 	if config.Log != "" {
@@ -81,7 +81,7 @@ func (self *Server) loadVars() {
 
 func (self *Server) newSession(resp http.ResponseWriter, req *http.Request) *Session {
 	resource, group, item, tail := parseUriPath(req.URL.Path)
-	sess := Session {
+	sess := Session{
 		id:       atomic.AddUint64(&(self.nextSessionId), 1),
 		config:   self.config,
 		req:      req,
@@ -94,8 +94,8 @@ func (self *Server) newSession(resp http.ResponseWriter, req *http.Request) *Ses
 	return &sess
 }
 
-
 var uriRe, _ = regexp.Compile(`^/([a-zA-Z]\w*)/([a-zA-Z]\w*)/([a-zA-Z]\w*)((?:/.*)?)$`)
+
 func parseUriPath(path string) (resource, group, item, tail string) {
 	m := uriRe.FindStringSubmatch(path)
 	if len(m) != 5 {
@@ -108,7 +108,8 @@ func parseUriPath(path string) (resource, group, item, tail string) {
 var paramRe, _ = regexp.Compile(`\${[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)?}`)
 var varExpr, _ = regexp.Compile(`^[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)?$`)
 var paramNameRe, _ = regexp.Compile(`^[a-zA-Z]\w*$`)
-type ParamFunc func(string)(string, bool)
+
+type ParamFunc func(string) (string, bool)
 
 func requestParams(req *http.Request) ParamFunc {
 	// ${aaa} ${foo.bar} ${_env.PATH}
@@ -150,9 +151,7 @@ func requestParams(req *http.Request) ParamFunc {
 	return ret
 }
 
-
-
-func globalParam() func(string)string {
+func globalParam() func(string) string {
 	return func(k string) string {
 		v, _ := GetGlobalParam(k)
 		return v
@@ -169,7 +168,7 @@ func (self *Server) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 	sess.username = username
-	if ! sess.checkPermission() {
+	if !sess.checkPermission() {
 		sess.ErrorEnd(http.StatusForbidden, "access of %s forbidden", req.URL.Path)
 		return
 	}
@@ -187,7 +186,6 @@ type Handler interface {
 
 type HandlerFactory func(sess *Session) Handler
 
-
 func (self *Session) ErrorEnd(code int, format string, v ...interface{}) {
 	msg := fmt.Sprintf(format, v...)
 	self.warn("- " + msg)
@@ -196,11 +194,11 @@ func (self *Session) ErrorEnd(code int, format string, v ...interface{}) {
 }
 
 func (self *Session) BadEnd(format string, v ...interface{}) {
-	self.warn("- " + format, v...)
+	self.warn("- "+format, v...)
 }
 
 func (self *Session) GoodEnd(format string, v ...interface{}) {
-	self.info("- " + format, v...)
+	self.info("- "+format, v...)
 }
 
 func (self *Session) UserConfig() *conf.User {
@@ -209,13 +207,13 @@ func (self *Session) UserConfig() *conf.User {
 }
 
 func (self *Server) StartDaemons() {
-	for name, conf := range(self.config.Daemons) {
+	for name, conf := range self.config.Daemons {
 		go RunDaemon(name, conf)
 	}
 }
 
 func (self *Server) StartTimers() {
-	for name, conf := range(self.config.Timers) {
+	for name, conf := range self.config.Timers {
 		go RunTimer(name, conf)
 	}
 }
@@ -233,4 +231,3 @@ func (self *Server) Run() error {
 	logger.Printf("INFO (_) [server] starting listen at %s", s.Addr)
 	return s.ListenAndServe()
 }
-

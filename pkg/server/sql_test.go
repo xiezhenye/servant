@@ -1,18 +1,19 @@
 package server
+
 import (
-	"testing"
-	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 	"database/sql"
+	"gopkg.in/DATA-DOG/go-sqlmock.v1"
+	"testing"
 )
 
 func TestReplaceSqlParams(t *testing.T) {
-	p1 := func(k string)(string,bool) {
+	p1 := func(k string) (string, bool) {
 		if k == "a" {
 			return "1", true
 		}
 		return "", false
 	}
-	p2 := func(k string)(string,bool) {
+	p2 := func(k string) (string, bool) {
 		if k == "a" {
 			return "1", true
 		}
@@ -43,16 +44,15 @@ func TestReplaceSqlParams(t *testing.T) {
 	}
 }
 
-func mockRowsToSqlRows(mockRows sqlmock.Rows) *sql.Rows {
+func mockRowsToSqlRows(mockRows *sqlmock.Rows) *sql.Rows {
 	db, mock, _ := sqlmock.New()
 	mock.ExpectQuery("select").WillReturnRows(mockRows)
 	rows, _ := db.Query("select")
 	return rows
 }
 
-
 func TestRowToResult(t *testing.T) {
-	mockRows := sqlmock.NewRows([]string{"a","b","c"})
+	mockRows := sqlmock.NewRows([]string{"a", "b", "c"})
 	mockRows.AddRow(1, 2, 3)
 	result, err := rowsToResult(mockRowsToSqlRows(mockRows))
 	if err != nil {
@@ -66,4 +66,3 @@ func TestRowToResult(t *testing.T) {
 	}
 
 }
-

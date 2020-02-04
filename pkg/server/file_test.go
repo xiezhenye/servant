@@ -1,14 +1,14 @@
 package server
 
 import (
-	"testing"
-	"servant/conf"
+	"github.com/xiezhenye/servant/pkg/conf"
 	"reflect"
+	"testing"
 )
 
 func TestCheckDirAllow(t *testing.T) {
-	dirConf := conf.Dir {
-		Allows: []string {
+	dirConf := conf.Dir{
+		Allows: []string{
 			"POST",
 			"GET",
 		},
@@ -29,11 +29,11 @@ func TestCheckDirAllow(t *testing.T) {
 	if checkDirAllow(&dirConf, "", "HEAD") == nil {
 		t.Errorf("HEAD should be denied")
 	}
-	dirConf = conf.Dir {
-		Allows: []string {
+	dirConf = conf.Dir{
+		Allows: []string{
 			"GET",
 		},
-		Patterns: []string {
+		Patterns: []string{
 			`aaa`,
 			`/abc\.xxx$`,
 		},
@@ -73,23 +73,23 @@ func TestParseRange(t *testing.T) {
 		t.Fail()
 	}
 	rgs, err = parseRange("bytes=0-10", 20)
-	if len(rgs)!=1 || rgs[0].start != 0 || rgs[0].length != 11 {
+	if len(rgs) != 1 || rgs[0].start != 0 || rgs[0].length != 11 {
 		t.Fail()
 	}
 
 	rgs, err = parseRange("bytes=-10", 20)
-	if len(rgs)!=1 || rgs[0].start != 10 || rgs[0].length != 10 {
+	if len(rgs) != 1 || rgs[0].start != 10 || rgs[0].length != 10 {
 		t.Fail()
 	}
 
 	rgs, err = parseRange("bytes=1-", 20)
-	if len(rgs)!=1 || rgs[0].start != 1 || rgs[0].length != 19 {
+	if len(rgs) != 1 || rgs[0].start != 1 || rgs[0].length != 19 {
 		t.Fail()
 	}
 }
 
 func TestContentRange(t *testing.T) {
-	r := httpRange{ 2, 3 }.contentRange(5)
+	r := httpRange{2, 3}.contentRange(5)
 	if r != "bytes 2-4/5" {
 		t.Fail()
 	}

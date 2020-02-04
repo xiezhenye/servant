@@ -2,9 +2,9 @@ package server
 
 import (
 	"database/sql"
-	"servant/conf"
-	"net/http"
 	"encoding/json"
+	"github.com/xiezhenye/servant/pkg/conf"
+	"net/http"
 )
 
 type DatabaseServer struct {
@@ -15,7 +15,7 @@ type sqlResult []map[string]string
 
 func NewDatabaseServer(sess *Session) Handler {
 	return DatabaseServer{
-		Session:sess,
+		Session: sess,
 	}
 }
 
@@ -60,7 +60,7 @@ func (self DatabaseServer) serve() {
 	defer db.Close()
 	data := make([]sqlResult, 0, 1)
 
-	for _, sql := range(queryConf.Sqls) {
+	for _, sql := range queryConf.Sqls {
 		sqlReplaced, sqlParams, ok := replaceSqlParams(sql, reqParams)
 		if !ok {
 			self.ErrorEnd(http.StatusInternalServerError, "parse sql params failed. sql: %s, params: %v", sql, self.req.URL.Query())
@@ -82,9 +82,9 @@ func (self DatabaseServer) serve() {
 	self.GoodEnd("execution done")
 }
 
-func replaceSqlParams(inSql string, query ParamFunc) (string, []interface{}, bool){
+func replaceSqlParams(inSql string, query ParamFunc) (string, []interface{}, bool) {
 	params := make([]interface{}, 0, 4)
-	outSql, ok := VarExpand(inSql, query, func(s string)string {
+	outSql, ok := VarExpand(inSql, query, func(s string) string {
 		params = append(params, s)
 		return "?"
 	})
@@ -107,7 +107,7 @@ func rowsToResult(rows *sql.Rows) (sqlResult, error) {
 	}
 	ret := make([]map[string]string, 0, 1)
 	row := make([]interface{}, len(columns))
-	for i, _ := range(row) {
+	for i, _ := range row {
 		row[i] = new(string)
 	}
 	for rows.Next() {
@@ -116,11 +116,10 @@ func rowsToResult(rows *sql.Rows) (sqlResult, error) {
 			return ret, err
 		}
 		mapRow := make(map[string]string)
-		for i, column := range(columns) {
+		for i, column := range columns {
 			mapRow[column] = *(row[i]).(*string)
 		}
 		ret = append(ret, mapRow)
 	}
 	return ret, nil
 }
-
