@@ -34,3 +34,7 @@ bin
 gopkg.in/
 github.com/
 rpmbuild/
+
+go.sum
+pkg/server/sql_drivers.go
+
