@@ -1,17 +1,18 @@
 package server
+
 import (
-	"net/http"
-	"regexp"
-	"os/user"
-	"os/exec"
-	"servant/conf"
-	//"io/ioutil"
-	"time"
-	"syscall"
-	"strconv"
+	"github.com/pkg/errors"
+	"github.com/xiezhenye/servant/pkg/conf"
 	"io"
 	"io/ioutil"
+	"net/http"
+	"os/exec"
+	"os/user"
+	"regexp"
+	"strconv"
 	"strings"
+	"syscall"
+	"time"
 )
 
 var argRe, _ = regexp.Compile(`("[^"]*"|'[^']*'|[^\s"']+)`)
@@ -22,7 +23,7 @@ type CommandServer struct {
 
 func NewCommandServer(sess *Session) Handler {
 	return CommandServer{
-		Session:sess,
+		Session: sess,
 	}
 }
 
@@ -45,7 +46,6 @@ func getCmdBashArgs(code string, query ParamFunc) (string, []string) {
 func replaceCmdParams(arg string, query ParamFunc) (string, bool) {
 	return VarExpand(arg, query, func(s string) string { return s })
 }
-
 
 func getCmdExecArgs(code string, query ParamFunc) (string, []string, bool) {
 	argsMatches := argRe.FindAllStringSubmatch(code, -1)
@@ -83,11 +83,11 @@ func (self CommandServer) serve() {
 		self.serveCommand(cmdConf)
 	} else {
 		if cmdConf.Lock.Wait {
-			GetLock(cmdConf.Lock.Name).TimeoutWith(time.Duration(cmdConf.Lock.Timeout) * time.Second, func() {
+			GetLock(cmdConf.Lock.Name).TimeoutWith(time.Duration(cmdConf.Lock.Timeout)*time.Second, func() {
 				self.serveCommand(cmdConf)
 			})
 		} else {
-			GetLock(cmdConf.Lock.Name).TryWith(func(){
+			GetLock(cmdConf.Lock.Name).TryWith(func() {
 				self.serveCommand(cmdConf)
 			})
 		}
@@ -99,7 +99,7 @@ func setCmdUser(cmd *exec.Cmd, username string) error {
 	if err != nil {
 		return err
 	}
-	uid , err := strconv.Atoi(sysUser.Uid)
+	uid, err := strconv.Atoi(sysUser.Uid)
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func setCmdUser(cmd *exec.Cmd, username string) error {
 	if err != nil {
 		return err
 	}
-	cred := syscall.Credential{ Uid: uint32(uid), Gid: uint32(gid) }
+	cred := syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)}
 
 	cmd.SysProcAttr.Credential = &cred
 	return nil
@@ -126,7 +126,6 @@ func (self CommandServer) serveCommand(cmdConf *conf.Command) {
 		self.GoodEnd("execution done")
 	}
 }
-
 
 func cmdFromConf(cmdConf *conf.Command, params ParamFunc, input io.ReadCloser) (cmd *exec.Cmd, out io.ReadCloser, err error) {
 	var name string
@@ -214,15 +213,19 @@ func (self CommandServer) execCommand(cmdConf *conf.Command) (outBuf []byte, err
 		ch := make(chan error, 1)
 		go func() {
 			if out != nil {
-				outBuf, err = ioutil.ReadAll(out)
-				if err != nil {
+				if outBuf, err = ioutil.ReadAll(out); err != nil {
 					ch <- err
-					cmd.Wait()
+					_ = cmd.Wait()
 					return
 				}
+				if err = cmd.Wait(); err != nil {
+					ch <- errors.WithMessage(err, string(outBuf))
+					return
+				}
+				ch <- nil
+				return
 			}
-			err = cmd.Wait()
-			ch <- err
+			ch <- cmd.Wait()
 		}()
 		timeout := time.Duration(cmdConf.Timeout)
 		select {
@@ -231,7 +234,7 @@ func (self CommandServer) execCommand(cmdConf *conf.Command) (outBuf []byte, err
 				err = NewServantError(http.StatusBadGateway, "execution error: %s", err)
 			}
 		case <-time.After(timeout * time.Second):
-			cmd.Process.Kill()
+			_ = cmd.Process.Kill()
 			err = NewServantError(http.StatusGatewayTimeout, "command execution timeout: %d", timeout)
 		}
 	}

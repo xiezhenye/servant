@@ -1,24 +1,26 @@
 package server
+
 import (
-	"strings"
-	"regexp"
-	"os"
-	"sync"
-	"servant/conf"
-	"net/http"
+	"github.com/xiezhenye/servant/pkg/conf"
 	"io/ioutil"
+	"net/http"
+	"os"
+	"regexp"
+	"strings"
+	"sync"
 )
 
-var globalParams = map[string]string {}
+var globalParams = map[string]string{}
 
 type VarServer struct {
 	*Session
 }
+
 const MaxVarValueSize = 1024
 
 func NewVarServer(sess *Session) Handler {
 	return &VarServer{
-		Session:sess,
+		Session: sess,
 	}
 }
 
@@ -72,10 +74,10 @@ func SetArgVars(params []string) {
 }
 
 func setVars(params []string, prefix string) {
-	for _, s := range(params) {
+	for _, s := range params {
 		kv := strings.SplitN(s, "=", 2)
 		if match, _ := regexp.MatchString(`^[a-zA-Z]\w*$`, kv[0]); match {
-			globalParams[prefix + kv[0]] = kv[1]
+			globalParams[prefix+kv[0]] = kv[1]
 		}
 	}
 }
@@ -122,6 +124,7 @@ func GetGlobalParam(k string) (string, bool) {
 }
 
 var paramsCanExpand = map[string]bool{}
+
 const MaxVarExpandDepth = 10
 
 func GetVarCanExpand(k string) bool {
@@ -141,11 +144,10 @@ func SetVarCanExpand(k string, b bool) {
 	varsLock.Unlock()
 }
 
-
 func CloneGlobalParams() map[string]string {
 	ret := make(map[string]string)
 	varsLock.Lock()
-	for k, v := range(globalParams) {
+	for k, v := range globalParams {
 		ret[k] = v
 	}
 	varsLock.Unlock()
@@ -162,14 +164,14 @@ func ValidateParams(vs conf.Validators, params ParamFunc) bool {
 			return false
 		}
 		ret, err := regexp.MatchString(vd.Pattern, v)
-		if err != nil || !ret{
+		if err != nil || !ret {
 			return false
 		}
 	}
 	return true
 }
 
-func VarExpand(s string, query ParamFunc, replace func(string)string) (string, bool) {
+func VarExpand(s string, query ParamFunc, replace func(string) string) (string, bool) {
 	const maxDepth = 10
 	stack := make([][]byte, maxDepth)
 	stack[0] = make([]byte, 0, len(s))
@@ -178,7 +180,7 @@ func VarExpand(s string, query ParamFunc, replace func(string)string) (string, b
 	}
 	sp := 0
 	for i := 0; i < len(s); i++ {
-		if i < len(s) - 1 && s[i:i+2] == "${" {
+		if i < len(s)-1 && s[i:i+2] == "${" {
 			sp++
 			if sp == maxDepth {
 				return "", false
@@ -199,7 +201,7 @@ func VarExpand(s string, query ParamFunc, replace func(string)string) (string, b
 			if sp == 1 {
 				stack[0] = append(stack[0], []byte(replace(v))...)
 			} else {
-				stack[sp - 1] = append(stack[sp - 1], []byte(v)...)
+				stack[sp-1] = append(stack[sp-1], []byte(v)...)
 			}
 			stack[sp] = stack[sp][:0]
 			sp--

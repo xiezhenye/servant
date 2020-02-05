@@ -1,18 +1,19 @@
 package server
+
 import (
-	"strings"
-	"strconv"
-	"fmt"
 	"crypto/sha1"
 	"encoding/hex"
-	"time"
+	"fmt"
 	"net"
+	"strconv"
+	"strings"
+	"time"
 )
 
 /*
  Authorization: user ts sha1(user + key + ts + method + uri)
 
- */
+*/
 func (self *Session) auth() (username string, err error) {
 	defer func() {
 		// deley 1s on fail to prevent attack
@@ -33,13 +34,13 @@ func (self *Session) auth() (username string, err error) {
 		return "", fmt.Errorf("user %s not found", reqUser)
 	}
 	remoteHost := strings.Split(self.req.RemoteAddr, ":")[0]
-	if ! checkHosts(remoteHost, user.Hosts) {
+	if !checkHosts(remoteHost, user.Hosts) {
 		return reqUser, fmt.Errorf("remote host %s is denied", self.req.RemoteAddr)
 	}
 	if user.Key != "" {
 		nowTs := time.Now().Unix()
 		maxDelta := self.config.Auth.MaxTimeDelta
-		if nowTs - ts > int64(maxDelta) || ts - nowTs > int64(maxDelta) {
+		if nowTs-ts > int64(maxDelta) || ts-nowTs > int64(maxDelta) {
 			return reqUser, fmt.Errorf("timestamp delta too large")
 		}
 		strToHash := reqUser + user.Key + strconv.FormatInt(ts, 10) + self.req.Method + self.req.RequestURI
@@ -52,7 +53,7 @@ func (self *Session) auth() (username string, err error) {
 	return reqUser, nil
 }
 
-func parseAuthHeader(authStr string) (user, hash string, ts int64, err error){
+func parseAuthHeader(authStr string) (user, hash string, ts int64, err error) {
 	segs := strings.SplitN(authStr, " ", 3)
 	user = segs[0]
 	if len(segs) < 3 {
@@ -68,14 +69,13 @@ func parseAuthHeader(authStr string) (user, hash string, ts int64, err error){
 }
 
 func checkPermission(group string, allows []string) bool {
-	for _, allow := range(allows) {
+	for _, allow := range allows {
 		if group == allow {
 			return true
 		}
 	}
 	return false
 }
-
 
 func (self *Session) checkPermission() bool {
 	if self.username == "" {
@@ -89,7 +89,7 @@ func checkHosts(remoteAddr string, hosts []string) bool {
 		return true
 	}
 	ok := false
-	for _, host := range (hosts) {
+	for _, host := range hosts {
 		_, allowedNet, err := net.ParseCIDR(host)
 		if err != nil {
 			continue

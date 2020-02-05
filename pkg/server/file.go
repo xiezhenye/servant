@@ -1,17 +1,17 @@
 package server
 
 import (
-	"net/http"
-	"regexp"
-	"servant/conf"
-	"path"
-	"strings"
-	"os"
-	"io"
-	"fmt"
 	"errors"
-	"strconv"
+	"fmt"
+	"github.com/xiezhenye/servant/pkg/conf"
+	"io"
+	"net/http"
+	"os"
+	"path"
 	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
 )
 
 type FileServer struct {
@@ -20,7 +20,7 @@ type FileServer struct {
 
 func NewFileServer(sess *Session) Handler {
 	return FileServer{
-		Session:sess,
+		Session: sess,
 	}
 }
 
@@ -38,7 +38,7 @@ func (self FileServer) findDirConfig() (*conf.Dir, string) {
 
 func checkDirAllow(dirConf *conf.Dir, relPath string, method string) error {
 	ok := false
-	for _, allowed := range(dirConf.Allows) {
+	for _, allowed := range dirConf.Allows {
 		if allowed == method {
 			ok = true
 			break
@@ -50,20 +50,20 @@ func checkDirAllow(dirConf *conf.Dir, relPath string, method string) error {
 	if len(dirConf.Patterns) > 0 {
 		ok = false
 		var err error
-		for _, pattern := range(dirConf.Patterns) {
+		for _, pattern := range dirConf.Patterns {
 			ok, err = regexp.MatchString(pattern, relPath)
 			if err == nil && ok {
 				break
 			}
 		}
-		if ! ok {
+		if !ok {
 			return fmt.Errorf("%s not match allowed pattern", relPath)
 		}
 	}
 	return nil
 }
 
-func (self FileServer) openFileError(err error, method, filePath  string) {
+func (self FileServer) openFileError(err error, method, filePath string) {
 	e := ""
 	if err != nil {
 		e = err.Error()
@@ -194,7 +194,7 @@ func (self FileServer) serve() {
 		return
 	}
 	filePath := path.Clean(filepath.Join(rootDir, relPath))
-	if ! strings.HasPrefix(filePath, path.Clean(rootDir) + "/") {
+	if !strings.HasPrefix(filePath, path.Clean(rootDir)+"/") {
 		self.ErrorEnd(http.StatusForbidden, "attempt to %s out of root: %s", method, relPath)
 		return
 	}
@@ -226,6 +226,7 @@ type httpRange struct {
 func (r httpRange) contentRange(size int64) string {
 	return fmt.Sprintf("bytes %d-%d/%d", r.start, r.start+r.length-1, size)
 }
+
 // parseRange parses a Range header string as per RFC 2616.
 func parseRange(s string, size int64) ([]httpRange, error) {
 	if s == "" {

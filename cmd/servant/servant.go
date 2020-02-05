@@ -1,22 +1,21 @@
 package main
 
 import (
-	"servant/conf"
-	"servant/server"
-	"fmt"
 	"flag"
+	"fmt"
+	"github.com/xiezhenye/servant/pkg/conf"
+	"github.com/xiezhenye/servant/pkg/server"
 	"os"
-//	"github.com/davecgh/go-spew/spew"
 )
 
 type arrayFlags []string
 
-func (self *arrayFlags) String() string {
-	return fmt.Sprintf("%v", *self)
+func (f *arrayFlags) String() string {
+	return fmt.Sprintf("%v", *f)
 }
 
-func (self *arrayFlags) Set(value string) error {
-	*self = append(*self, value)
+func (f *arrayFlags) Set(value string) error {
+	*f = append(*f, value)
 	return nil
 }
 
@@ -33,10 +32,10 @@ func main() {
 	//flag.BoolVar(&debug, "debug", false, "enable debug mode")
 	flag.Parse()
 
-        if showVer {
-                fmt.Printf("%s-%s @%s\n", conf.Version, conf.Release, conf.Rev)
-                return
-        }
+	if showVer {
+		fmt.Printf("%s-%s @%s\n", conf.Version, conf.Release, conf.Rev)
+		return
+	}
 
 	server.SetArgVars(vars)
 	server.SetEnvVars()
@@ -47,16 +46,15 @@ func main() {
 		os.Exit(2)
 	}
 	/*
-	if debug {
-		config.Debug = true
-		spew.Config.Indent = "    "
-		spew.Config.MaxDepth = 100
-		spew.Fdump(os.Stderr, config)
-	}*/
+		if debug {
+			config.Debug = true
+			spew.Config.Indent = "    "
+			spew.Config.MaxDepth = 100
+			spew.Fdump(os.Stderr, config)
+		}*/
 	err = server.NewServer(&config).Run()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(3)
 	}
 }
-

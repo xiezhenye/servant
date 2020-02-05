@@ -1,9 +1,11 @@
 package server
+
 import (
-	"os"
-	"log"
 	"fmt"
+	"log"
+	"os"
 )
+
 var logger = log.New(os.Stdout, "", log.LstdFlags)
 
 func (self *Session) log(topic string, level string, format string, v ...interface{}) {
@@ -11,7 +13,7 @@ func (self *Session) log(topic string, level string, format string, v ...interfa
 	if len(v) == 0 {
 		logger.Println(prefix + format)
 	} else {
-		logger.Printf(prefix + format, v...)
+		logger.Printf(prefix+format, v...)
 	}
 }
 

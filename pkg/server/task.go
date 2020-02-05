@@ -1,16 +1,16 @@
 package server
+
 import (
-	"servant/conf"
-	"time"
+	"github.com/xiezhenye/servant/pkg/conf"
+	"os"
 	"os/exec"
+	"os/signal"
 	"sync"
 	"syscall"
-	"os/signal"
-	"os"
+	"time"
 )
 
-
-var taskProcesses = make(map[int] *exec.Cmd)
+var taskProcesses = make(map[int]*exec.Cmd)
 var taskProcessesLock sync.Mutex
 var _isExiting bool = false
 var sigHandlerOnce sync.Once
@@ -39,16 +39,16 @@ func RunTimer(name string, timerConf *conf.Timer) {
 		logger.Printf("WARN (_) [timer] %s tick not set", name)
 		return
 	}
-	cmdConf := conf.Command {
-		Lang: timerConf.Lang,
-		Code: timerConf.Code,
-		User: timerConf.User,
+	cmdConf := conf.Command{
+		Lang:       timerConf.Lang,
+		Code:       timerConf.Code,
+		User:       timerConf.User,
 		Background: true,
-		Timeout: timerConf.Deadline,
+		Timeout:    timerConf.Deadline,
 	}
 	ticker := time.NewTicker(time.Duration(timerConf.Tick) * time.Second)
 	logger.Printf("INFO (_) [timer] starting timer %s", name)
-	for range(ticker.C) {
+	for range ticker.C {
 		if isExiting() {
 			break
 		}
@@ -88,10 +88,10 @@ func RunTimer(name string, timerConf *conf.Timer) {
 }
 
 func RunDaemon(name string, daemonConf *conf.Daemon) {
-	cmdConf := conf.Command {
-		Lang: daemonConf.Lang,
-		Code: daemonConf.Code,
-		User: daemonConf.User,
+	cmdConf := conf.Command{
+		Lang:       daemonConf.Lang,
+		Code:       daemonConf.Code,
+		User:       daemonConf.User,
 		Background: true,
 	}
 	if daemonConf.Retries < 0 {
@@ -99,7 +99,7 @@ func RunDaemon(name string, daemonConf *conf.Daemon) {
 	}
 	logger.Printf("INFO (_) [daemon] starting daemon %s", name)
 	cleanupOnExit()
-	for i := 0; i < daemonConf.Retries + 1; i++ {
+	for i := 0; i < daemonConf.Retries+1; i++ {
 		if isExiting() {
 			return
 		}
@@ -127,7 +127,7 @@ func RunDaemon(name string, daemonConf *conf.Daemon) {
 			return
 		}
 		t1 := time.Now()
-		if t1.Sub(t0) >= time.Duration(daemonConf.Live) * time.Second {
+		if t1.Sub(t0) >= time.Duration(daemonConf.Live)*time.Second {
 			i = 0
 		}
 	}
@@ -135,11 +135,11 @@ func RunDaemon(name string, daemonConf *conf.Daemon) {
 }
 
 func cleanupOnExit() {
-	sigHandlerOnce.Do(func(){
+	sigHandlerOnce.Do(func() {
 		sigChan := make(chan os.Signal, 1)
 		signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 		go func() {
-			sig := <- sigChan
+			sig := <-sigChan
 			logger.Printf("INFO (_) [daemon] got signal %s", sig.String())
 			cleanupProcesses()
 			logger.Println("INFO (_) [daemon] cleaning up done")
@@ -156,7 +156,7 @@ func cleanupProcesses() {
 
 	for i := 0; i < 10; i++ { // in about 100ms
 		taskProcessesLock.Lock()
-		for _, cmd := range(taskProcesses) {
+		for _, cmd := range taskProcesses {
 			if cmd.Process.Signal(syscall.SIGTERM) != nil {
 				delete(taskProcesses, cmd.Process.Pid)
 				logger.Printf("INFO (_) [daemon] process %d terminated", cmd.Process.Pid)
@@ -165,7 +165,7 @@ func cleanupProcesses() {
 		taskProcessesLock.Unlock()
 		time.Sleep(10 * time.Millisecond)
 	}
-	for _, cmd := range(taskProcesses) {
+	for _, cmd := range taskProcesses {
 		logger.Printf("INFO (_) [daemon] killing process %d ", cmd.Process.Pid)
 		cmd.Process.Kill()
 	}
