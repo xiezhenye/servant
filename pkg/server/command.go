@@ -76,7 +76,6 @@ func (self CommandServer) serve() {
 	cmdConf := self.findCommandConfig()
 	if cmdConf == nil {
 		self.ErrorEnd(http.StatusNotFound, "command %s not found", urlPath)
-		self.resp.WriteHeader(http.StatusNotFound)
 		return
 	}
 	if cmdConf.Lock.Name == "" {
