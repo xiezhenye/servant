@@ -116,7 +116,11 @@ func setCmdUser(cmd *exec.Cmd, username string) error {
 func (self CommandServer) serveCommand(cmdConf *conf.Command) {
 	outBuf, err := self.execCommand(cmdConf)
 	if err != nil {
-		self.ErrorEnd(err.(ServantError).HttpCode, err.(ServantError).Message)
+		if sErr, ok := err.(ServantError); ok {
+			self.ErrorEnd(sErr.HttpCode, sErr.Message)
+		} else {
+			self.ErrorEnd(500, err.Error())
+		}
 		return
 	}
 	_, err = self.resp.Write(outBuf) // may log errors
