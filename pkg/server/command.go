@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"github.com/pkg/errors"
 	"github.com/xiezhenye/servant/pkg/conf"
 	"io"
@@ -164,13 +165,22 @@ func cmdFromConf(cmdConf *conf.Command, params ParamFunc, input io.ReadCloser) (
 			return
 		}
 	}
-	cmd.Stdin = input
+	buf := bytes.NewBuffer([]byte(""))
+	if input != nil{
+		inputData, err:= ioutil.ReadAll(input)
+		if err!=nil{
+			logger.Printf("read input error %s \n", err.Error())
+		}
+		buf=bytes.NewBuffer(inputData)
+	}
+
+	cmd.Stdin = buf
 	cmd.Stderr = nil
 	if cmdConf.Background {
 		cmd.SysProcAttr.Setsid = true
 		cmd.SysProcAttr.Foreground = false
 		cmd.Stdout = nil
-		cmd.Stdin = nil
+		// cmd.Stdin = nil
 	} else {
 		cmd.SysProcAttr.Setpgid = true
 		cmd.SysProcAttr.Pgid = 0

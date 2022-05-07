@@ -6,7 +6,8 @@ import (
 	"os"
 )
 
-var logger = log.New(os.Stdout, "", log.LstdFlags)
+var logger = log.New(os.Stdout, "", log.Ldate | log.Ltime | log.Lmicroseconds)
+
 
 func (self *Session) log(topic string, level string, format string, v ...interface{}) {
 	prefix := fmt.Sprintf("%s (%d) [%s] ", level, self.id, topic)
